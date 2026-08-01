@@ -157,4 +157,4 @@ node --test test/               # the suite runs against dist/
 
 ## License
 
-MIT © Javi R. Land data: Natural Earth (public domain).
+MIT © rameerez. Land data: Natural Earth (public domain).

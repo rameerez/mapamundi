@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>worldmap — dotted world map web component · zero dependencies</title>
-  <meta name="description" content="A dotted world map as a zero-dependency web component. Any resolution from a packed land bitmask, a built-in city registry (just type London), six ambient animations, tilt, hover and click events. One ESM file, no build step.">
+  <title>worldmap — dotted world map web component · 20 KB ES module, no build step</title>
+  <meta name="description" content="A dotted world map as a single ES module — 20 KB gzipped, zero dependencies, no build step. Use it with a plain script tag, an import map, or npm. Any resolution, city markers by name (just type London), six ambient animations, tilt, hover and click events.">
   <link rel="canonical" href="https://rameerez.github.io/worldmap/">
-  <meta property="og:title" content="worldmap — dotted world map web component">
-  <meta property="og:description" content="The dotted world map every hero section wants — as one zero-dependency file. Type city names, pick a shape, tilt it, animate it.">
+  <meta property="og:title" content="worldmap — dotted world map web component · 20 KB ESM, no build step">
+  <meta property="og:description" content="The dotted world map every hero section wants — one 20 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rameerez.github.io/worldmap/">
   <script type="application/ld+json">
@@ -19,7 +19,7 @@
     "codeRepository": "https://github.com/rameerez/worldmap",
     "programmingLanguage": "JavaScript",
     "license": "https://opensource.org/licenses/MIT",
-    "author": { "@type": "Person", "name": "Javi R", "url": "https://github.com/rameerez" }
+    "author": { "@type": "Person", "name": "rameerez", "url": "https://github.com/rameerez" }
   }
   </script>
   <style>
@@ -34,8 +34,14 @@
     .hero p.sub { max-width: 640px; margin: 0 auto 1.5rem; font-size: 1.15rem; color: #5b6b7b; }
     .hero .links { display: flex; gap: .75rem; justify-content: center; margin-bottom: 2rem; }
     .hero .links a { display: inline-block; padding: .55rem 1.1rem; border-radius: 10px; font-weight: 600; text-decoration: none; }
-    .hero .links a.primary { background: #2262fe; color: #fff; }
     .hero .links a.ghost { border: 1px solid #cfd8e3; color: #212b35; }
+    /* GitHub-style star widget: button + joined count pill */
+    .gh-star { display: inline-flex; align-items: stretch; padding: 0 !important; }
+    .gh-star-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1.1rem; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 10px; color: #212b35; }
+    .gh-star:hover .gh-star-btn { background: #eef1f4; }
+    .gh-star:has(.gh-star-count:not([hidden])) .gh-star-btn { border-radius: 10px 0 0 10px; }
+    .gh-star-count { display: inline-flex; align-items: center; padding: .55rem .9rem; background: #fff; border: 1px solid #d0d7de; border-left: 0; border-radius: 0 10px 10px 0; color: #212b35; font-variant-numeric: tabular-nums; }
+    .gh-star-count[hidden] { display: none; }
     .stage { border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
     h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin: 3rem 0 .75rem; }
     pre { background: #f6f8fb; border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem 1.25rem; overflow-x: auto; font: 13.5px/1.6 ui-monospace, monospace; }
@@ -60,12 +66,19 @@
   <header class="hero">
     <h1><code>&lt;world-map&gt;</code></h1>
     <p class="sub">
-      The dotted world map every hero section wants — as <strong>one zero-dependency
-      web component</strong>. Land dots at any resolution, city markers by name,
-      six ambient animations, tilt, hover, clicks. No build step, no framework, no API keys.
+      The dotted world map every hero section wants — <strong>one zero-dependency
+      ES module, 20&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
+      script tag, an import map, or npm. Land dots at any resolution, city markers
+      by name, six ambient animations, tilt, hover, clicks.
     </p>
     <div class="links">
-      <a class="primary" href="https://github.com/rameerez/worldmap">GitHub</a>
+      <a class="gh-star" href="https://github.com/rameerez/worldmap" aria-label="Star worldmap on GitHub">
+        <span class="gh-star-btn">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          Star on GitHub
+        </span>
+        <span class="gh-star-count" id="star-count" hidden></span>
+      </a>
       <a class="ghost" href="https://www.npmjs.com/package/worldmap">npm</a>
     </div>
   </header>
@@ -82,9 +95,18 @@
 
 &lt;world-map cities="London, Lagos, Singapore" tilt="40" ambient="wave"&gt;&lt;/world-map&gt;</code></pre>
   <p>
-    That's the entire integration. Or <code>npm install worldmap</code> and
-    <code>import "worldmap"</code> — same file, ESM, ~46&nbsp;KB with the whole
-    world included. Attributes are live: change one, the map re-renders.
+    That's the entire integration — one ES module, no bundler required,
+    <strong>19.5&nbsp;KB gzipped</strong> (64&nbsp;KB raw) with the whole world
+    included. Attributes are live: change one, the map re-renders. Import maps
+    (Rails <code>importmap-rails</code> included) and npm get the same file:
+  </p>
+  <pre><code>&lt;script type="importmap"&gt;
+{ "imports": { "worldmap": "https://unpkg.com/worldmap" } }
+&lt;/script&gt;
+&lt;script type="module"&gt;import "worldmap"&lt;/script&gt;</code></pre>
+  <p>
+    Or <code>npm install worldmap</code> and <code>import "worldmap"</code> from
+    your bundle — though the whole point is that you don't need one.
   </p>
 
   <h2>Try every knob</h2>
@@ -143,7 +165,8 @@
     <div>
       <h3>Zero everything</h3>
       <p>No dependencies, no build step, no network calls, no API keys, no tracking.
-      One ESM file. <code>prefers-reduced-motion</code> respected. MIT.</p>
+      One 20&nbsp;KB ES module — script tag, import map, or npm.
+      <code>prefers-reduced-motion</code> respected. MIT.</p>
     </div>
   </div>
 
@@ -167,7 +190,7 @@
 
   <footer>
     <p>
-      MIT © <a href="https://github.com/rameerez">Javi R</a> ·
+      MIT © <a href="https://github.com/rameerez">@rameerez</a> ·
       Land shapes derived from <a href="https://www.naturalearthdata.com">Natural Earth</a> (public domain) ·
       <a href="https://github.com/rameerez/worldmap">Source &amp; issues</a>
     </p>
@@ -184,6 +207,25 @@
     log.textContent = `city click → ${e.detail.name} (${e.detail.lat}, ${e.detail.lon})`);
   map.addEventListener("worldmap:dotclick", (e) =>
     log.textContent = `dot click → lat ${e.detail.lat.toFixed(1)}, lon ${e.detail.lon.toFixed(1)}`);
+
+  // Live star count for the CTA. Unauthenticated GitHub API (60 req/h per
+  // visitor IP) — cached per session; the count pill simply stays hidden if
+  // the fetch fails or the repo isn't public yet.
+  try {
+    const countEl = document.getElementById("star-count");
+    let stars = Number(sessionStorage.getItem("wm-stars"));
+    if (!Number.isFinite(stars) || sessionStorage.getItem("wm-stars") === null) {
+      const res = await fetch("https://api.github.com/repos/rameerez/worldmap");
+      if (res.ok) {
+        stars = (await res.json()).stargazers_count;
+        sessionStorage.setItem("wm-stars", String(stars));
+      }
+    }
+    if (Number.isFinite(stars)) {
+      countEl.textContent = stars >= 1000 ? `${(stars / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(stars);
+      countEl.hidden = false;
+    }
+  } catch {}
 </script>
 </body>
 </html>
