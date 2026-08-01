@@ -226,7 +226,19 @@ export class WorldMap {
       this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
     const [, parseMs] = span("wm:parse-innerHTML", () => { svg.innerHTML = markup; });
     this.styleEl.textContent = this.#css(o);
+    // Calibration (perf-harness lesson #2): the JS-side cost is only ~25%
+    // of a rebuild — the style recalc, layout and paint land AFTER this
+    // function returns. Double-rAF closes the window after the browser has
+    // actually produced the frame, so the adaptive spacing sees the TRUE
+    // per-rebuild cost (~4× larger) and spaces drags honestly. The sync
+    // value below is the headless/SSR fallback.
     this._lastRenderMs = performance.now() - renderT0;
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        this._lastRenderMs = performance.now() - renderT0;
+        dbg(`render calibrated: full frame cost ${this._lastRenderMs.toFixed(0)}ms → next spacing ${Math.min(1200, Math.max(REBUILD_MS, this._lastRenderMs * 8)).toFixed(0)}ms`);
+      }));
+    }
     dbg(`render: cols=${cols} rows=${rows} · build ${buildMs.toFixed(1)}ms · parse ${parseMs.toFixed(1)}ms · total ${this._lastRenderMs.toFixed(1)}ms · ${svg.querySelectorAll("*").length} nodes`);
   }
 
