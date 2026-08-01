@@ -32,16 +32,21 @@
     .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -0.03em; margin: 0 0 .5rem; }
     .hero h1 code { color: #2262fe; font-family: ui-monospace, monospace; }
     .hero p.sub { max-width: 640px; margin: 0 auto 1.5rem; font-size: 1.15rem; color: #5b6b7b; }
-    .hero .links { display: flex; gap: .75rem; justify-content: center; margin-bottom: 2rem; }
+    .hero .links { display: flex; gap: .75rem; justify-content: center; align-items: center; margin-bottom: 2rem; }
     .hero .links a { display: inline-block; padding: .55rem 1.1rem; border-radius: 10px; font-weight: 600; text-decoration: none; }
     .hero .links a.ghost { border: 1px solid #cfd8e3; color: #212b35; }
-    /* GitHub-style star widget: button + joined count pill */
-    .gh-star { display: inline-flex; align-items: stretch; padding: 0 !important; }
-    .gh-star-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1.1rem; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 10px; color: #212b35; }
+    /* GitHub-style star widget: octocat + label, joined count pill.
+       The selector must out-rank `.hero .links a` (0-2-1) or the anchor
+       stays inline-block and the pill drops to text baseline. */
+    .hero .links a.gh-star { display: inline-flex; align-items: stretch; padding: 0; font-size: .92rem; line-height: 1.2; }
+    .gh-star-btn { display: inline-flex; align-items: center; gap: .55rem; padding: .6rem 1.05rem; background: linear-gradient(#fcfdfe, #f3f5f8); border: 1px solid #cfd8e3; border-radius: 10px; color: #212b35; box-shadow: 0 1px 0 rgba(33, 43, 53, .05); }
+    .gh-star-btn svg, .gh-star-count svg { display: block; flex: none; }
     .gh-star:hover .gh-star-btn { background: #eef1f4; }
+    .gh-star:active .gh-star-btn { background: #e7ebef; box-shadow: inset 0 1px 2px rgba(33, 43, 53, .08); }
     .gh-star:has(.gh-star-count:not([hidden])) .gh-star-btn { border-radius: 10px 0 0 10px; }
-    .gh-star-count { display: inline-flex; align-items: center; padding: .55rem .9rem; background: #fff; border: 1px solid #d0d7de; border-left: 0; border-radius: 0 10px 10px 0; color: #212b35; font-variant-numeric: tabular-nums; }
+    .gh-star-count { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem .95rem; background: #fff; border: 1px solid #cfd8e3; border-left: 0; border-radius: 0 10px 10px 0; color: #212b35; font-variant-numeric: tabular-nums; box-shadow: 0 1px 0 rgba(33, 43, 53, .05); }
     .gh-star-count[hidden] { display: none; }
+    .gh-star-count svg { color: #eac54f; }
     .stage { border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
     h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin: 3rem 0 .75rem; }
     pre { background: #f6f8fb; border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem 1.25rem; overflow-x: auto; font: 13.5px/1.6 ui-monospace, monospace; }
@@ -74,10 +79,13 @@
     <div class="links">
       <a class="gh-star" href="https://github.com/rameerez/worldmap" aria-label="Star worldmap on GitHub">
         <span class="gh-star-btn">
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           Star on GitHub
         </span>
-        <span class="gh-star-count" id="star-count" hidden></span>
+        <span class="gh-star-count" id="star-count" hidden>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          <span id="star-count-num"></span>
+        </span>
       </a>
       <a class="ghost" href="https://www.npmjs.com/package/worldmap">npm</a>
     </div>
@@ -222,7 +230,8 @@
       }
     }
     if (Number.isFinite(stars)) {
-      countEl.textContent = stars >= 1000 ? `${(stars / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(stars);
+      document.getElementById("star-count-num").textContent =
+        stars >= 1000 ? `${(stars / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(stars);
       countEl.hidden = false;
     }
   } catch {}
