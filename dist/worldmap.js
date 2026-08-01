@@ -280,7 +280,7 @@ const STYLE_KEYS = new Set([
   "ambient", "ambientDuration", "cursor", "markerCursor"
 ]);
 const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
-const MARKER_KEYS = new Set(["cities", "markerPulse"]);
+const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
 const CALLBACK_KEYS = new Set(["onDotClick", "onDotEnter", "onCityClick", "onCityEnter"]);
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -369,8 +369,15 @@ export class WorldMap {
   // the resting value. This is the backpressure valve — without it, drag
   // input outruns render capacity and the tab drowns.
   #scheduleRebuild() {
+    // ADAPTIVE spacing (perf-harness lesson): a fixed 150ms floor against
+    // 70-146ms renders is a ~50% main-thread duty cycle — the storm scenario
+    // measured 49% blocked. Spacing self-tunes to ~8× the last measured
+    // render cost (capped at 1.2s), so heavy resolutions rebuild ~1×/s
+    // during a drag while cheap ones stay at the 150ms floor. Blocked time
+    // lands near 12% on any machine, fast or slow.
+    const spacing = Math.min(1200, Math.max(REBUILD_MS, (this._lastRenderMs ?? 0) * 8));
     const since = performance.now() - (this._lastRebuild ?? -Infinity);
-    const wait = Math.max(0, REBUILD_MS - since);
+    const wait = Math.max(0, spacing - since);
     dbg(`rebuild scheduled: ${wait === 0 ? "immediate (leading)" : `in ${wait.toFixed(0)}ms (trailing)`}`);
     clearTimeout(this._rebuildTimer);
     this._rebuildTimer = setTimeout(() => {
@@ -386,29 +393,33 @@ export class WorldMap {
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));
     this.grid = { cols, rows, latRange: o.latRange };
 
-    const svg = document.createElementNS(SVG_NS, "svg");
+    // PERSISTENT scene (heap-growth lesson): svg, tilt wrapper, style
+    // element and listeners are created ONCE and reused forever — a rebuild
+    // swaps viewBox + innerHTML in place. v2 recreated all three per rebuild
+    // and re-bound listeners each time; across a slider storm that churned
+    // tens of MB of discarded containers on top of the node garbage.
+    const renderT0 = performance.now();
+    if (!this.svg) {
+      this.svg = document.createElementNS(SVG_NS, "svg");
+      this.svg.setAttribute("class", "wm-svg");
+      this.svg.setAttribute("role", "img");
+      this._tiltWrap = document.createElement("div");
+      this._tiltWrap.className = "wm-tilt";
+      this._tiltWrap.appendChild(this.svg);
+      this.styleEl = document.createElement("style");
+      this.container.replaceChildren(this.styleEl, this._tiltWrap);
+      this.#bindEvents(this.svg); // once — handlers guard on options.interactive
+    }
+    const svg = this.svg;
     svg.setAttribute("viewBox", `0 0 ${cols * CELL} ${rows * CELL}`);
-    svg.setAttribute("class", "wm-svg");
-    svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", this.#ariaLabel());
     // One parse for the whole scene — the fast path for full builds.
     const [markup, buildMs] = span("wm:build-markup", () =>
       this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
     const [, parseMs] = span("wm:parse-innerHTML", () => { svg.innerHTML = markup; });
-    this.svg = svg;
-    dbg(`render: cols=${cols} rows=${rows} · build ${buildMs.toFixed(1)}ms · parse ${parseMs.toFixed(1)}ms · ${svg.querySelectorAll("*").length} nodes`);
-
-    const tiltWrap = document.createElement("div");
-    tiltWrap.className = "wm-tilt";
-    tiltWrap.appendChild(svg);
-
-    // ONE persistent style element, mutated in place ever after — style
-    // patches must never recreate it (sheet churn is real work too).
-    if (!this.styleEl) this.styleEl = document.createElement("style");
-    this.styleEl.textContent = this.#css(this.options);
-
-    this.container.replaceChildren(this.styleEl, tiltWrap);
-    if (o.interactive) this.#bindEvents(svg);
+    this.styleEl.textContent = this.#css(o);
+    this._lastRenderMs = performance.now() - renderT0;
+    dbg(`render: cols=${cols} rows=${rows} · build ${buildMs.toFixed(1)}ms · parse ${parseMs.toFixed(1)}ms · total ${this._lastRenderMs.toFixed(1)}ms · ${svg.querySelectorAll("*").length} nodes`);
   }
 
   // -- cheap patches -----------------------------------------------------------
@@ -487,8 +498,14 @@ export class WorldMap {
     const markup = parts.join("");
 
     this._dotsCache.set(key, markup);
-    if (this._dotsCache.size > 12) { // LRU-ish: drop the oldest entry
-      this._dotsCache.delete(this._dotsCache.keys().next().value);
+    // Cap by BYTES, not entries: a resolution sweep can visit dozens of
+    // grids and high-res strings run ~1MB each — an entry-count cap
+    // measured as tens of MB of retained heap in the perf harness.
+    this._cacheBytes = (this._cacheBytes ?? 0) + markup.length;
+    while (this._cacheBytes > 4_000_000 && this._dotsCache.size > 1) {
+      const oldest = this._dotsCache.keys().next().value;
+      this._cacheBytes -= this._dotsCache.get(oldest).length;
+      this._dotsCache.delete(oldest);
     }
     return markup;
   }
@@ -609,6 +626,7 @@ export class WorldMap {
     };
 
     const dispatch = (kind, phase, detail) => {
+      if (!this.options.interactive) return;
       const cb = this.options[`on${kind === "city" ? "City" : "Dot"}${phase}`];
       if (cb) cb(detail);
       this.container.dispatchEvent(new CustomEvent(
