@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>worldmap — performance harness</title>
+  <style>
+    body { margin: 0; font: 14px/1.5 ui-monospace, monospace; color: #212b35; background: #fff; }
+    main { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+    button { font: inherit; padding: .5rem 1rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; cursor: pointer; }
+    button[disabled] { opacity: .4; }
+    table { border-collapse: collapse; margin-top: 1rem; width: 100%; }
+    td, th { border-bottom: 1px solid #e5e9ef; padding: .4rem .6rem; text-align: left; }
+    .pass { color: #067647; font-weight: 700; }
+    .fail { color: #b42318; font-weight: 700; }
+    #stage { border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem; margin-top: 1.5rem; }
+  </style>
+  <script type="module" src="../dist/worldmap.js"></script>
+</head>
+<body>
+<main>
+  <h1>worldmap performance harness</h1>
+  <p>
+    Scripted abuse with budgets. Every scenario runs against the real component in this tab —
+    numbers below are your machine's truth, not a simulation.
+  </p>
+  <button id="run">Run full suite</button>
+  <table id="results"><tr><th>scenario</th><th>metric</th><th>value</th><th>budget</th><th></th></tr></table>
+  <div id="stage"><world-map id="map" cities="London, Lagos, Singapore, New York, Tokyo"></world-map></div>
+
+  <script type="module">
+    const map = document.getElementById("map");
+    const results = document.getElementById("results");
+    const runBtn = document.getElementById("run");
+
+    const row = (scenario, metric, value, budget, ok) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${scenario}</td><td>${metric}</td><td>${value}</td><td>${budget}</td>` +
+        `<td class="${ok ? "pass" : "fail"}">${ok ? "PASS" : "FAIL"}</td>`;
+      results.appendChild(tr);
+    };
+
+    const settle = (ms = 450) => new Promise((r) => setTimeout(r, ms));
+    const nodeCount = () => document.querySelectorAll("#stage svg *").length;
+
+    // Long-task observer: the ground truth for "does the main thread choke".
+    let longTasks = [];
+    new PerformanceObserver((list) => longTasks.push(...list.getEntries()))
+      .observe({ entryTypes: ["longtask"] });
+    const takeLongTasks = () => { const t = longTasks; longTasks = []; return t; };
+
+    async function initialRenderTimes() {
+      for (const cols of [120, 180, 240]) {
+        takeLongTasks();
+        const t0 = performance.now();
+        map.setAttribute("cols", cols);
+        await settle();
+        const tasks = takeLongTasks();
+        const worst = Math.max(0, ...tasks.map((t) => t.duration));
+        row(`render cols=${cols}`, "worst main-thread task", `${worst.toFixed(0)}ms`, "< 200ms", worst < 200);
+        row(`render cols=${cols}`, "svg nodes", nodeCount(), "—", true);
+      }
+    }
+
+    async function sliderStorm() {
+      const heap0 = performance.memory?.usedJSHeapSize;
+      takeLongTasks();
+      // Frame counting during the storm — dropped frames show up as a low rate.
+      let frames = 0, counting = true;
+      const tick = () => { if (counting) { frames++; requestAnimationFrame(tick); } };
+      requestAnimationFrame(tick);
+
+      const t0 = performance.now();
+      // 600 attribute writes over ~3s, sweeping back and forth — the exact
+      // gesture that used to OOM the tab.
+      for (let i = 0; i < 600; i++) {
+        map.setAttribute("cols", 80 + Math.abs(300 - i) % 180);
+        if (i % 10 === 9) await new Promise((r) => setTimeout(r, 45));
+      }
+      await settle(800);
+      counting = false;
+      const elapsed = (performance.now() - t0) / 1000;
+      const fps = frames / elapsed;
+      const tasks = takeLongTasks();
+      const worst = Math.max(0, ...tasks.map((t) => t.duration));
+      const blocked = tasks.reduce((s, t) => s + t.duration, 0);
+
+      row("slider storm ×600", "avg fps during storm", fps.toFixed(0), "> 30", fps > 30);
+      row("slider storm ×600", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 250ms", worst < 250);
+      row("slider storm ×600", "total blocked time", `${blocked.toFixed(0)}ms`, `< 20% of ${elapsed.toFixed(1)}s`, blocked < elapsed * 1000 * 0.2);
+      if (heap0) {
+        // Nudge GC accounting with a settle; absolute truth needs devtools,
+        // but a runaway leak still shows as tens of MB here.
+        await settle(1000);
+        const growth = (performance.memory.usedJSHeapSize - heap0) / 1048576;
+        row("slider storm ×600", "JS heap growth", `${growth.toFixed(1)}MB`, "< 30MB", growth < 30);
+      }
+    }
+
+    async function stylePatchSpeed() {
+      takeLongTasks();
+      const t0 = performance.now();
+      for (let i = 0; i < 200; i++) {
+        map.setAttribute("dot-color", i % 2 ? "#d3dce6" : "#c3ccd8");
+        map.setAttribute("tilt", String(i % 45));
+      }
+      await settle(200);
+      const total = performance.now() - t0;
+      const tasks = takeLongTasks();
+      const worst = Math.max(0, ...tasks.map((t) => t.duration));
+      row("style patches ×400", "wall time", `${total.toFixed(0)}ms`, "< 1500ms", total < 1500);
+      row("style patches ×400", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 100ms", worst < 100);
+    }
+
+    async function hoverStorm() {
+      // Synthetic mouseover across 500 random dots — event delegation cost.
+      const dots = [...document.querySelectorAll("#stage .wm-pos")];
+      takeLongTasks();
+      const t0 = performance.now();
+      for (let i = 0; i < 500; i++) {
+        const el = dots[(Math.random() * dots.length) | 0]?.firstChild;
+        el?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      }
+      const total = performance.now() - t0;
+      row("hover storm ×500", "dispatch wall time", `${total.toFixed(0)}ms`, "< 300ms", total < 300);
+    }
+
+    runBtn.addEventListener("click", async () => {
+      runBtn.disabled = true;
+      results.querySelectorAll("tr:not(:first-child)").forEach((r) => r.remove());
+      map.setAttribute("cols", "120");
+      await settle();
+      await initialRenderTimes();
+      await sliderStorm();
+      await stylePatchSpeed();
+      await hoverStorm();
+      row("suite", "done", new Date().toLocaleTimeString(), "—", true);
+      runBtn.disabled = false;
+    });
+  </script>
+</main>
+</body>
+</html>
