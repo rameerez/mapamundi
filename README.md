@@ -50,7 +50,7 @@ pin "mappo", to: "mappo.js" # vendor dist/mappo.js
   dot-shape="circle"
   dot-color="#d3dce6"
   marker-color="#2262fe"
-  marker-pulse="true"
+  marker-pulse="true"   <!-- animations are opt-in; default is a calm, static map -->
   tilt="40"
   ambient="wave"
 ></world-map>
@@ -85,7 +85,7 @@ const map = new WorldMap(document.querySelector("#hero-map"), {
   ],
   markerShape: "circle",
   markerColor: "#2262fe",
-  markerPulse: true,
+  markerPulse: false,
   tilt: 40,                        // the lying-down hero look (rotateX, deg)
   perspective: 1000,
   ambient: "none",                 // "wave" animates the whole matrix

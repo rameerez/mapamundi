@@ -59,7 +59,7 @@ export const DEFAULTS = {
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot
-  markerPulse: true,          // radar ping: expanding fading ring behind the core
+  markerPulse: false,         // radar ping (expanding fading ring) — opt-in; mappo ships static by default
   markerHoverScale: 1.8,
   // Plane transform (degrees; the classic hero skew)
   tilt: 0,

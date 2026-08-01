@@ -1,6 +1,6 @@
 {
   "name": "mappo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A dotted world map as a zero-dependency web component: land dots derived from a packed bitmask at any resolution, a built-in city registry (just type \"London\"), shapes, tilt, pulse markers, hover/click events. One ESM file, no build step.",
   "type": "module",
   "main": "dist/mappo.js",

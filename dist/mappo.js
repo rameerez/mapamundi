@@ -1,4 +1,4 @@
-// mappo v0.1.0
+// mappo v0.2.0
 // A dotted world map as a zero-dependency web component. MIT license.
 // https://github.com/rameerez/mappo
 // Land data: Natural Earth (public domain, naturalearthdata.com).
@@ -251,7 +251,7 @@ export const DEFAULTS = {
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot
-  markerPulse: true,          // radar ping: expanding fading ring behind the core
+  markerPulse: false,         // radar ping (expanding fading ring) — opt-in; mappo ships static by default
   markerHoverScale: 1.8,
   // Plane transform (degrees; the classic hero skew)
   tilt: 0,
