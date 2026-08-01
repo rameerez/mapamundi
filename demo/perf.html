@@ -160,6 +160,29 @@
       row("style patches ×400", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 100ms", worst < 100);
     }
 
+    // Ambient animations run a transform on EVERY dot continuously — SVG
+    // transforms are main-thread in Chromium, so this is a real per-frame
+    // cost that must stay inside budget at the default resolution.
+    async function ambientFps() {
+      for (const mode of ["wave", "noise"]) {
+        map.setAttribute("cols", "120");
+        map.setAttribute("tilt", "40");
+        map.setAttribute("ambient", mode);
+        await settle(600);
+        takeLongTasks();
+        let frames = 0, counting = true;
+        const tick = () => { if (counting) { frames++; requestAnimationFrame(tick); } };
+        requestAnimationFrame(tick);
+        await settle(3000);
+        counting = false;
+        const fps = frames / 3;
+        dumpDeep(`ambient ${mode}`, takeLongTasks());
+        row(`ambient ${mode} (cols=120, tilt=40)`, "steady-state fps", fps.toFixed(0), "> 40", fps > 40);
+      }
+      map.setAttribute("ambient", "none");
+      map.setAttribute("tilt", "0");
+    }
+
     async function hoverStorm() {
       // Synthetic mouseover across 500 random dots — event delegation cost.
       const dots = [...document.querySelectorAll("#stage .wm-pos")];
@@ -183,6 +206,7 @@
       await sliderStorm();
       await stylePatchSpeed();
       await hoverStorm();
+      await ambientFps();
       row("suite", "done", new Date().toLocaleTimeString(), "—", true);
       // The copy-pasteable verdict: everything the table shows, in console form.
       const verdict = [...results.querySelectorAll("tr:not(:first-child)")].map((tr) => {

@@ -68,6 +68,7 @@ export const DEFAULTS = {
   // Ambient animation over the whole matrix
   ambient: "none",            // "none" | "wave" | "noise"
   ambientDuration: 6,         // seconds per cycle
+  ambientIntensity: 8,        // crest height in SVG units (a cell is 10)
   // Interaction
   cursor: "default",
   markerCursor: "pointer",
@@ -85,7 +86,7 @@ export const DEFAULTS = {
 const STYLE_KEYS = new Set([
   "dotColor", "dotHoverColor", "dotHoverScale", "markerColor",
   "markerHoverScale", "tilt", "rotate", "perspective",
-  "ambient", "ambientDuration", "cursor", "markerCursor"
+  "ambient", "ambientDuration", "ambientIntensity", "cursor", "markerCursor"
 ]);
 const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
 const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
@@ -95,7 +96,12 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const CELL = 10;        // internal SVG units per grid cell — never exposed
 const MAX_COLS = 260;   // above this, SVG node count degrades interaction
 const REBUILD_MS = 150; // min spacing between geometry rebuilds
-const NOISE_SCALE = 0.09; // ambient "noise" field frequency — tuned by eye
+// Ambient noise field frequencies. PHASE picks when a dot moves, AMP how
+// far — two octaves at different scales is what makes the surface read as
+// organic material instead of a screensaver. 0.22 ≈ patches a few dots
+// wide (the 0.09 v1 field produced continent-sized blobs — "too big").
+const NOISE_PHASE_SCALE = 0.22;
+const NOISE_AMP_SCALE = 0.31;
 
 // Deep instrumentation, two layers:
 // - performance.mark/measure spans ship ALWAYS (they cost ~nothing and make
@@ -307,10 +313,12 @@ export class WorldMap {
         if (!isLand(c.lat, c.lon)) continue;
 
         const pw = ((col + row) / (grid.cols + grid.rows)).toFixed(3);
-        const pn = (((noise2(col * NOISE_SCALE, row * NOISE_SCALE) + 1) / 2)).toFixed(3);
+        const pn = (((noise2(col * NOISE_PHASE_SCALE, row * NOISE_PHASE_SCALE) + 1) / 2)).toFixed(3);
+        // Amplitude octave: 0.55–1.0 so every dot moves, none identically.
+        const a = (0.55 + 0.45 * ((noise2(col * NOISE_AMP_SCALE + 47, row * NOISE_AMP_SCALE + 47) + 1) / 2)).toFixed(2);
         parts.push(
           `<g class="wm-pos" transform="translate(${col * CELL + CELL / 2} ${row * CELL + CELL / 2})" data-col="${col}" data-row="${row}">` +
-          `<use class="wm-dot" href="#wm-dot-shape" style="--wm-pw:${pw};--wm-pn:${pn}"/></g>`
+          `<use class="wm-dot" href="#wm-dot-shape" style="--wm-pw:${pw};--wm-pn:${pn};--wm-a:${a}"/></g>`
         );
       }
     }
@@ -376,6 +384,7 @@ export class WorldMap {
         fill: ${o.dotHoverColor};
         transform: scale(${o.dotHoverScale});
         transition: none;
+        animation: none; /* a running ambient transform animation would win otherwise */
       }` : ""}
       .wm-marker {
         fill: ${o.markerColor};
@@ -407,17 +416,35 @@ export class WorldMap {
         0%, 100% { transform: scale(1); }
         50%      { transform: scale(1.12); }
       }
-      ${o.ambient !== "none" ? `
+      ${o.ambient === "wave" ? `
+      /* The rolling crest: displacement along the plane's Y — under tilt it
+         reads as HEIGHT, a sheet undulating. The active window is 13% of
+         the cycle, so only a thin band of dots is risen at any instant;
+         the rise is fast, the settle slow (water, not metronome). Phase is
+         baked per-dot (--wm-pw), amplitude varies per-dot (--wm-a) so the
+         crest line shimmers instead of ruling a straight edge. */
       .wm-dots .wm-dot {
-        animation: wm-shimmer ${o.ambientDuration}s ease-in-out infinite;
-        /* Negative delay = start mid-cycle: no synchronized flash. The
-           phase is baked per-dot; which phase field applies is a pure
-           style decision — that's why ambient never rebuilds geometry. */
-        animation-delay: calc(${o.ambient === "wave" ? "var(--wm-pw)" : "var(--wm-pn)"} * ${o.ambientDuration}s * -1);
+        animation: wm-swell ${o.ambientDuration}s linear infinite;
+        animation-delay: calc(var(--wm-pw) * ${o.ambientDuration}s * -1);
       }
-      @keyframes wm-shimmer {
-        0%, 100% { opacity: 1; }
-        50%      { opacity: .4; }
+      @keyframes wm-swell {
+        0%   { transform: translateY(0) scale(1); }
+        5%   { transform: translateY(calc(var(--wm-a, 1) * -${o.ambientIntensity}px)) scale(1.22); }
+        13%  { transform: translateY(0) scale(1); }
+        100% { transform: translateY(0) scale(1); }
+      }` : ""}
+      ${o.ambient === "noise" ? `
+      /* Organic breathing: phase AND amplitude from two noise octaves, so
+         neighboring patches rise together but never identically — the
+         perlin-material feel. Continuous (no thin window): this mode is
+         texture, wave mode is event. */
+      .wm-dots .wm-dot {
+        animation: wm-drift ${o.ambientDuration}s ease-in-out infinite;
+        animation-delay: calc(var(--wm-pn) * ${o.ambientDuration}s * -1);
+      }
+      @keyframes wm-drift {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50%      { transform: translateY(calc(var(--wm-a, 1) * -${(o.ambientIntensity * 0.75).toFixed(1)}px)) scale(1.1); }
       }` : ""}
       @media (prefers-reduced-motion: reduce) {
         .wm-dot, .wm-marker, .wm-marker-ring { animation: none !important; transition: none !important; }

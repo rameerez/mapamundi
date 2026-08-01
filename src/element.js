@@ -30,6 +30,7 @@ const ATTR_MAP = {
   "perspective":      ["perspective", Number],
   "ambient":          ["ambient", String],
   "ambient-duration": ["ambientDuration", Number],
+  "ambient-intensity": ["ambientIntensity", Number],
   "cursor":           ["cursor", String],
   "marker-cursor":    ["markerCursor", String],
   "interactive":      ["interactive", (v) => v !== "false"]
