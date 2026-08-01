@@ -53,6 +53,10 @@
   <p id="log">Click a marker or a dot…</p>
 
   <script type="module">
+    import { WorldMap } from "../dist/worldmap.js";
+    // Deep console output on demand: open with ?debug to watch every update
+    // classification, cache hit, and render phase as "[worldmap] ..." lines.
+    WorldMap.debug = new URLSearchParams(location.search).has("debug");
     const map = document.getElementById("map");
     const log = document.getElementById("log");
 

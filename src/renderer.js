@@ -97,7 +97,29 @@ const MAX_COLS = 260;   // above this, SVG node count degrades interaction
 const REBUILD_MS = 150; // min spacing between geometry rebuilds
 const NOISE_SCALE = 0.09; // ambient "noise" field frequency — tuned by eye
 
+// Deep instrumentation, two layers:
+// - performance.mark/measure spans ship ALWAYS (they cost ~nothing and make
+//   any DevTools Performance trace self-documenting: look for "wm:*" blocks
+//   in the flame chart).
+// - console output is opt-in via `WorldMap.debug = true` (the perf harness
+//   turns it on) so production consumers get a silent component.
+function span(name, fn) {
+  const m0 = `${name}:start`;
+  performance.mark(m0);
+  const out = fn();
+  performance.measure(name, m0);
+  const entries = performance.getEntriesByName(name);
+  const ms = entries[entries.length - 1]?.duration ?? 0;
+  performance.clearMarks(m0);
+  return [out, ms];
+}
+function dbg(...args) {
+  if (WorldMap.debug) console.debug("[worldmap]", ...args);
+}
+
 export class WorldMap {
+  // Opt-in deep console output ("[worldmap] …"). The perf harness sets this.
+  static debug = false;
   // @param container [HTMLElement] emptied and rendered into; sizing is the
   //   consumer's (the svg scales to the container via viewBox).
   // @param options   [Object] see DEFAULTS.
@@ -116,18 +138,31 @@ export class WorldMap {
     Object.assign(this.options, options);
     if (changed.length === 0) return;
 
-    if (changed.every((k) => CALLBACK_KEYS.has(k))) return; // read at dispatch time
+    if (changed.every((k) => CALLBACK_KEYS.has(k))) {
+      dbg("update: callbacks only", changed, "→ no work");
+      return; // read at dispatch time
+    }
 
     const styleOnly = changed.every((k) =>
       STYLE_KEYS.has(k) || DEF_KEYS.has(k) || MARKER_KEYS.has(k) || CALLBACK_KEYS.has(k));
 
     if (!styleOnly) {
+      dbg("update:", changed, "→ GEOMETRY rebuild (debounced)");
       this.#scheduleRebuild();
       return;
     }
-    if (changed.some((k) => DEF_KEYS.has(k))) this.#patchDefs();
-    if (changed.some((k) => MARKER_KEYS.has(k))) this.#patchMarkers();
-    this.#patchStyle(); // always cheap, and def/marker changes can shift it
+    const patches = [];
+    if (changed.some((k) => DEF_KEYS.has(k))) {
+      const [, defsMs] = span("wm:patch-defs", () => this.#patchDefs());
+      patches.push(`defs ${defsMs.toFixed(1)}ms`);
+    }
+    if (changed.some((k) => MARKER_KEYS.has(k))) {
+      const [, markersMs] = span("wm:patch-markers", () => this.#patchMarkers());
+      patches.push(`markers ${markersMs.toFixed(1)}ms`);
+    }
+    const [, styleMs] = span("wm:patch-style", () => this.#patchStyle());
+    patches.push(`style ${styleMs.toFixed(1)}ms`);
+    dbg("update:", changed, "→", patches.join(" · "));
   }
 
   destroy() {
@@ -143,10 +178,12 @@ export class WorldMap {
   // input outruns render capacity and the tab drowns.
   #scheduleRebuild() {
     const since = performance.now() - (this._lastRebuild ?? -Infinity);
+    const wait = Math.max(0, REBUILD_MS - since);
+    dbg(`rebuild scheduled: ${wait === 0 ? "immediate (leading)" : `in ${wait.toFixed(0)}ms (trailing)`}`);
     clearTimeout(this._rebuildTimer);
     this._rebuildTimer = setTimeout(() => {
       if (this.container.isConnected) this.render();
-    }, Math.max(0, REBUILD_MS - since));
+    }, wait);
   }
 
   render() {
@@ -163,8 +200,11 @@ export class WorldMap {
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", this.#ariaLabel());
     // One parse for the whole scene — the fast path for full builds.
-    svg.innerHTML = this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o);
+    const [markup, buildMs] = span("wm:build-markup", () =>
+      this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
+    const [, parseMs] = span("wm:parse-innerHTML", () => { svg.innerHTML = markup; });
     this.svg = svg;
+    dbg(`render: cols=${cols} rows=${rows} · build ${buildMs.toFixed(1)}ms · parse ${parseMs.toFixed(1)}ms · ${svg.querySelectorAll("*").length} nodes`);
 
     const tiltWrap = document.createElement("div");
     tiltWrap.className = "wm-tilt";
@@ -234,7 +274,8 @@ export class WorldMap {
   #dotsMarkup(grid) {
     const key = `${grid.cols}|${grid.latRange[0]}|${grid.latRange[1]}`;
     const cached = this._dotsCache.get(key);
-    if (cached) return cached;
+    if (cached) { dbg(`dots cache HIT ${key}`); return cached; }
+    dbg(`dots cache MISS ${key} — computing`);
 
     const parts = [`<g class="wm-dots">`];
     for (let row = 0; row < grid.rows; row++) {

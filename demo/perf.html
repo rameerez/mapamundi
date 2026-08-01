@@ -29,6 +29,11 @@
   <div id="stage"><world-map id="map" cities="London, Lagos, Singapore, New York, Tokyo"></world-map></div>
 
   <script type="module">
+    import { WorldMap } from "../dist/worldmap.js";
+    // Deep console mode: every internal decision logs as "[worldmap] …",
+    // every harness metric as "[wm-perf] …" — filter the console by either.
+    WorldMap.debug = true;
+    console.info("[wm-perf] deep console output ON — filter: worldmap|wm-perf");
     const map = document.getElementById("map");
     const results = document.getElementById("results");
     const runBtn = document.getElementById("run");
@@ -49,6 +54,32 @@
       .observe({ entryTypes: ["longtask"] });
     const takeLongTasks = () => { const t = longTasks; longTasks = []; return t; };
 
+    // Deep dumps: every long task with timing, every wm:* span since the
+    // last dump, plus a heap sample — table form, copy-pasteable.
+    const dumpDeep = (scenario, tasks) => {
+      if (tasks.length) {
+        console.warn(`[wm-perf] ${scenario}: ${tasks.length} long task(s)`);
+        console.table(tasks.map((t) => ({ scenario, startMs: +t.startTime.toFixed(0), durationMs: +t.duration.toFixed(1) })));
+      } else {
+        console.info(`[wm-perf] ${scenario}: zero long tasks`);
+      }
+      const spans = performance.getEntriesByType("measure").filter((m) => m.name.startsWith("wm:"));
+      if (spans.length) {
+        const byName = {};
+        for (const s of spans) {
+          (byName[s.name] ??= { name: s.name, count: 0, totalMs: 0, worstMs: 0 });
+          byName[s.name].count++;
+          byName[s.name].totalMs += s.duration;
+          byName[s.name].worstMs = Math.max(byName[s.name].worstMs, s.duration);
+        }
+        console.table(Object.values(byName).map((r) => ({ ...r, totalMs: +r.totalMs.toFixed(1), worstMs: +r.worstMs.toFixed(1) })));
+        performance.clearMeasures();
+      }
+      if (performance.memory) {
+        console.info(`[wm-perf] ${scenario}: heap ${(performance.memory.usedJSHeapSize / 1048576).toFixed(1)}MB`);
+      }
+    };
+
     async function initialRenderTimes() {
       for (const cols of [120, 180, 240]) {
         takeLongTasks();
@@ -59,6 +90,7 @@
         const worst = Math.max(0, ...tasks.map((t) => t.duration));
         row(`render cols=${cols}`, "worst main-thread task", `${worst.toFixed(0)}ms`, "< 200ms", worst < 200);
         row(`render cols=${cols}`, "svg nodes", nodeCount(), "—", true);
+        dumpDeep(`render cols=${cols}`, tasks);
       }
     }
 
@@ -85,6 +117,7 @@
       const worst = Math.max(0, ...tasks.map((t) => t.duration));
       const blocked = tasks.reduce((s, t) => s + t.duration, 0);
 
+      dumpDeep("slider storm", tasks);
       row("slider storm ×600", "avg fps during storm", fps.toFixed(0), "> 30", fps > 30);
       row("slider storm ×600", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 250ms", worst < 250);
       row("slider storm ×600", "total blocked time", `${blocked.toFixed(0)}ms`, `< 20% of ${elapsed.toFixed(1)}s`, blocked < elapsed * 1000 * 0.2);
@@ -108,6 +141,7 @@
       const total = performance.now() - t0;
       const tasks = takeLongTasks();
       const worst = Math.max(0, ...tasks.map((t) => t.duration));
+      dumpDeep("style patches", tasks);
       row("style patches ×400", "wall time", `${total.toFixed(0)}ms`, "< 1500ms", total < 1500);
       row("style patches ×400", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 100ms", worst < 100);
     }
@@ -122,6 +156,7 @@
         el?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       }
       const total = performance.now() - t0;
+      dumpDeep("hover storm", takeLongTasks());
       row("hover storm ×500", "dispatch wall time", `${total.toFixed(0)}ms`, "< 300ms", total < 300);
     }
 
@@ -135,6 +170,13 @@
       await stylePatchSpeed();
       await hoverStorm();
       row("suite", "done", new Date().toLocaleTimeString(), "—", true);
+      // The copy-pasteable verdict: everything the table shows, in console form.
+      const verdict = [...results.querySelectorAll("tr:not(:first-child)")].map((tr) => {
+        const [scenario, metric, value, budget, ok] = [...tr.children].map((td) => td.textContent);
+        return { scenario, metric, value, budget, ok };
+      });
+      console.info("[wm-perf] SUITE COMPLETE — full verdict:");
+      console.table(verdict);
       runBtn.disabled = false;
     });
   </script>
