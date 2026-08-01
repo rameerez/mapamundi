@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds dist/mapamundi.js — ONE self-contained ESM file, because the
+// Builds dist/mappo.js — ONE self-contained ESM file, because the
 // whole point is zero-friction consumption: a single <script type="module">,
 // one importmap pin, one CDN URL. No bundler dependency: the module graph is
 // a hand-ordered list and imports are internal-only, so "bundling" is
@@ -24,9 +24,9 @@ const body = MODULES.map((file) => {
   return `// ══════════ src/${file} ══════════\n${code}`;
 }).join("\n\n");
 
-const banner = `// mapamundi v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
+const banner = `// mappo v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
 // A dotted world map as a zero-dependency web component. MIT license.
-// https://github.com/rameerez/mapamundi
+// https://github.com/rameerez/mappo
 // Land data: Natural Earth (public domain, naturalearthdata.com).
 // GENERATED from src/ by scripts/build.js — edit src/, not this file.
 `;
@@ -37,5 +37,5 @@ if (typeof customElements !== "undefined") register();
 `;
 
 mkdirSync(join(here, "..", "dist"), { recursive: true });
-writeFileSync(join(here, "..", "dist", "mapamundi.js"), banner + "\n" + body + footer);
-console.log("wrote dist/mapamundi.js");
+writeFileSync(join(here, "..", "dist", "mappo.js"), banner + "\n" + body + footer);
+console.log("wrote dist/mappo.js");

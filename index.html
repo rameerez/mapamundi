@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mapamundi — dotted world map web component · 20 KB ES module, no build step</title>
+  <title>mappo — dotted world map web component · 20 KB ES module, no build step</title>
   <meta name="description" content="A dotted world map as a single ES module — 20 KB gzipped, zero dependencies, no build step. Use it with a plain script tag, an import map, or npm. Any resolution, city markers by name (just type London), six ambient animations, tilt, hover and click events.">
-  <link rel="canonical" href="https://rameerez.github.io/mapamundi/">
-  <meta property="og:title" content="mapamundi — dotted world map web component · 20 KB ESM, no build step">
+  <link rel="canonical" href="https://rameerez.github.io/mappo/">
+  <meta property="og:title" content="mappo — dotted world map web component · 20 KB ESM, no build step">
   <meta property="og:description" content="The dotted world map every hero section wants — one 20 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://rameerez.github.io/mapamundi/">
+  <meta property="og:url" content="https://rameerez.github.io/mappo/">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
-    "name": "mapamundi",
+    "name": "mappo",
     "description": "A dotted world map as a zero-dependency web component: land dots derived from a packed bitmask at any resolution, a built-in city registry, six ambient animations, hover/click events.",
-    "codeRepository": "https://github.com/rameerez/mapamundi",
+    "codeRepository": "https://github.com/rameerez/mappo",
     "programmingLanguage": "JavaScript",
     "license": "https://opensource.org/licenses/MIT",
     "author": { "@type": "Person", "name": "rameerez", "url": "https://github.com/rameerez" }
@@ -64,7 +64,7 @@
     footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #e5e9ef; font-size: .85rem; color: #5b6b7b; }
     #eventlog { font: 12px/1.5 ui-monospace, monospace; color: #5b6b7b; min-height: 1.5em; margin-top: .5rem; }
   </style>
-  <script type="module" src="./dist/mapamundi.js"></script>
+  <script type="module" src="./dist/mappo.js"></script>
 </head>
 <body>
 <main>
@@ -77,7 +77,7 @@
       by name, six ambient animations, tilt, hover, clicks.
     </p>
     <div class="links">
-      <a class="gh-star" href="https://github.com/rameerez/mapamundi" aria-label="Star mapamundi on GitHub">
+      <a class="gh-star" href="https://github.com/rameerez/mappo" aria-label="Star mappo on GitHub">
         <span class="gh-star-btn">
           <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           Star on GitHub
@@ -87,7 +87,7 @@
           <span id="star-count-num"></span>
         </span>
       </a>
-      <a class="ghost" href="https://www.npmjs.com/package/mapamundi">npm</a>
+      <a class="ghost" href="https://www.npmjs.com/package/mappo">npm</a>
     </div>
   </header>
 
@@ -99,7 +99,7 @@
   </div>
 
   <h2>Use it in 10 seconds</h2>
-  <pre><code>&lt;script type="module" src="https://unpkg.com/mapamundi"&gt;&lt;/script&gt;
+  <pre><code>&lt;script type="module" src="https://unpkg.com/mappo"&gt;&lt;/script&gt;
 
 &lt;world-map cities="London, Lagos, Singapore" tilt="40" ambient="wave"&gt;&lt;/world-map&gt;</code></pre>
   <p>
@@ -109,11 +109,11 @@
     (Rails <code>importmap-rails</code> included) and npm get the same file:
   </p>
   <pre><code>&lt;script type="importmap"&gt;
-{ "imports": { "mapamundi": "https://unpkg.com/mapamundi" } }
+{ "imports": { "mappo": "https://unpkg.com/mappo" } }
 &lt;/script&gt;
-&lt;script type="module"&gt;import "mapamundi"&lt;/script&gt;</code></pre>
+&lt;script type="module"&gt;import "mappo"&lt;/script&gt;</code></pre>
   <p>
-    Or <code>npm install mapamundi</code> and <code>import "mapamundi"</code> from
+    Or <code>npm install mappo</code> and <code>import "mappo"</code> from
     your bundle — though the whole point is that you don't need one.
   </p>
 
@@ -193,14 +193,14 @@
   <p>
     Full API — the <code>WorldMap</code> class, callbacks, low-level exports like
     <code>isLand(lat, lon)</code> and the city registry — in the
-    <a href="https://github.com/rameerez/mapamundi#readme">README</a>.
+    <a href="https://github.com/rameerez/mappo#readme">README</a>.
   </p>
 
   <footer>
     <p>
       MIT © <a href="https://github.com/rameerez">@rameerez</a> ·
       Land shapes derived from <a href="https://www.naturalearthdata.com">Natural Earth</a> (public domain) ·
-      <a href="https://github.com/rameerez/mapamundi">Source &amp; issues</a>
+      <a href="https://github.com/rameerez/mappo">Source &amp; issues</a>
     </p>
   </footer>
 </main>
@@ -223,7 +223,7 @@
     const countEl = document.getElementById("star-count");
     let stars = Number(sessionStorage.getItem("wm-stars"));
     if (!Number.isFinite(stars) || sessionStorage.getItem("wm-stars") === null) {
-      const res = await fetch("https://api.github.com/repos/rameerez/mapamundi");
+      const res = await fetch("https://api.github.com/repos/rameerez/mappo");
       if (res.ok) {
         stars = (await res.json()).stargazers_count;
         sessionStorage.setItem("wm-stars", String(stars));

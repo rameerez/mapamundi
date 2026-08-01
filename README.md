@@ -1,4 +1,4 @@
-# mapamundi
+# mappo
 
 **A dotted world map as a zero-dependency web component.** Land dots derived
 from a packed bitmask at any resolution, a built-in city registry (just type
@@ -6,7 +6,7 @@ from a packed bitmask at any resolution, a built-in city registry (just type
 no build step, no dependencies.
 
 ```html
-<script type="module" src="https://unpkg.com/mapamundi"></script>
+<script type="module" src="https://unpkg.com/mappo"></script>
 
 <world-map cities="London, Lagos, Singapore" tilt="40"></world-map>
 ```
@@ -17,7 +17,7 @@ That's the whole integration.
 
 Every SaaS hero section eventually wants the dotted world with glowing city
 markers. The usual path is a designer's frozen SVG: thousands of hardcoded
-rectangles, cities placed by eye, one resolution forever. `mapamundi`
+rectangles, cities placed by eye, one resolution forever. `mappo`
 derives the dots from a ~22 KB packed land bitmask instead — so resolution,
 dot shape, projection framing, and city markers are all runtime parameters,
 and "add Nairobi" is typing `Nairobi`.
@@ -25,20 +25,20 @@ and "add Nairobi" is typing `Nairobi`.
 ## Install
 
 ```bash
-npm install mapamundi
+npm install mappo
 ```
 
 Or skip npm entirely — it's one file:
 
 ```html
-<script type="module" src="https://unpkg.com/mapamundi"></script>
+<script type="module" src="https://unpkg.com/mappo"></script>
 ```
 
 Rails with importmaps:
 
 ```ruby
 # config/importmap.rb
-pin "mapamundi", to: "mapamundi.js" # vendor dist/mapamundi.js
+pin "mappo", to: "mappo.js" # vendor dist/mappo.js
 ```
 
 ## The element
@@ -69,7 +69,7 @@ map.addEventListener("worldmap:cityclick", (e) => {
 ## The JS API
 
 ```js
-import { WorldMap } from "mapamundi";
+import { WorldMap } from "mappo";
 
 const map = new WorldMap(document.querySelector("#hero-map"), {
   cols: 140,                       // dots across the world — the resolution
@@ -151,7 +151,7 @@ never run it.
 
 ```bash
 node scripts/generate-mask.js   # refresh src/mask.js from Natural Earth
-node scripts/build.js           # bundle src/ → dist/mapamundi.js
+node scripts/build.js           # bundle src/ → dist/mappo.js
 node --test test/               # the suite runs against dist/
 ```
 

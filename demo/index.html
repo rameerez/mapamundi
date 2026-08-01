@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mapamundi — demo</title>
+  <title>mappo — demo</title>
   <style>
     :root { color-scheme: light; }
     body { margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; color: #212b35; background: #fff; }
@@ -17,7 +17,7 @@
     .knobs input[type="range"] { min-width: 10rem; padding: 0; }
     #log { font: 12px/1.6 ui-monospace, monospace; color: #5b6b7b; white-space: pre-wrap; min-height: 3em; }
   </style>
-  <script type="module" src="../dist/mapamundi.js"></script>
+  <script type="module" src="../dist/mappo.js"></script>
 </head>
 <body>
 <main>
@@ -56,9 +56,9 @@
   <p id="log">Click a marker or a dot…</p>
 
   <script type="module">
-    import { WorldMap } from "../dist/mapamundi.js";
+    import { WorldMap } from "../dist/mappo.js";
     // Deep console output on demand: open with ?debug to watch every update
-    // classification, cache hit, and render phase as "[mapamundi] ..." lines.
+    // classification, cache hit, and render phase as "[mappo] ..." lines.
     WorldMap.debug = new URLSearchParams(location.search).has("debug");
     const map = document.getElementById("map");
     const log = document.getElementById("log");

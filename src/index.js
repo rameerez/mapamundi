@@ -1,10 +1,10 @@
-// mapamundi — a dotted world map as a zero-dependency web component.
+// mappo — a dotted world map as a zero-dependency web component.
 //
-//   import "mapamundi";           // side effect: registers <world-map>
+//   import "mappo";           // side effect: registers <world-map>
 //   <world-map cities="London, Lagos"></world-map>
 //
 //   // or the programmatic API:
-//   import { WorldMap } from "mapamundi";
+//   import { WorldMap } from "mappo";
 //   new WorldMap(el, { cities: ["Tokyo"], tilt: 40, ambient: "wave" });
 
 export { WorldMap, DEFAULTS, snapToLand } from "./renderer.js";
