@@ -5,7 +5,7 @@ import {
   project, cellCenter,
   CITIES, resolveCity,
   snapToLand, DEFAULTS
-} from "../dist/worldmap.js";
+} from "../dist/mapamundi.js";
 
 // The dist bundle is what ships — test THAT, not src/, so a build bug can
 // never pass the suite.

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WorldMap } from "../dist/worldmap.js";
+import { WorldMap } from "../dist/mapamundi.js";
 
 // The crash regression (live review, 2026-08): dragging the cols slider
 // re-rendered the full geometry per input event — parse, style, layout and

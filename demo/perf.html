@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>worldmap — performance harness</title>
+  <title>mapamundi — performance harness</title>
   <style>
     body { margin: 0; font: 14px/1.5 ui-monospace, monospace; color: #212b35; background: #fff; }
     main { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -15,11 +15,11 @@
     .fail { color: #b42318; font-weight: 700; }
     #stage { border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem; margin-top: 1.5rem; }
   </style>
-  <script type="module" src="../dist/worldmap.js"></script>
+  <script type="module" src="../dist/mapamundi.js"></script>
 </head>
 <body>
 <main>
-  <h1>worldmap performance harness</h1>
+  <h1>mapamundi performance harness</h1>
   <p>
     Scripted abuse with budgets. Every scenario runs against the real component in this tab —
     numbers below are your machine's truth, not a simulation.
@@ -29,11 +29,11 @@
   <div id="stage"><world-map id="map" cities="London, Lagos, Singapore, New York, Tokyo"></world-map></div>
 
   <script type="module">
-    import { WorldMap } from "../dist/worldmap.js";
-    // Deep console mode: every internal decision logs as "[worldmap] …",
+    import { WorldMap } from "../dist/mapamundi.js";
+    // Deep console mode: every internal decision logs as "[mapamundi] …",
     // every harness metric as "[wm-perf] …" — filter the console by either.
     WorldMap.debug = true;
-    console.info("[wm-perf] deep console output ON — filter: worldmap|wm-perf");
+    console.info("[wm-perf] deep console output ON — filter: mapamundi|wm-perf");
     const map = document.getElementById("map");
     const results = document.getElementById("results");
     const runBtn = document.getElementById("run");

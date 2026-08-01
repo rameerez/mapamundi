@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Builds dist/worldmap.js — ONE self-contained ESM file, because the
+// Builds dist/mapamundi.js — ONE self-contained ESM file, because the
 // whole point is zero-friction consumption: a single <script type="module">,
 // one importmap pin, one CDN URL. No bundler dependency: the module graph is
 // a hand-ordered list and imports are internal-only, so "bundling" is
 // stripping import lines and concatenating. If the graph ever gets real
 // complexity, switch to esbuild — not before.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,9 +24,9 @@ const body = MODULES.map((file) => {
   return `// ══════════ src/${file} ══════════\n${code}`;
 }).join("\n\n");
 
-const banner = `// worldmap v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
+const banner = `// mapamundi v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
 // A dotted world map as a zero-dependency web component. MIT license.
-// https://github.com/rameerez/worldmap
+// https://github.com/rameerez/mapamundi
 // Land data: Natural Earth (public domain, naturalearthdata.com).
 // GENERATED from src/ by scripts/build.js — edit src/, not this file.
 `;
@@ -36,5 +36,6 @@ const footer = `
 if (typeof customElements !== "undefined") register();
 `;
 
-writeFileSync(join(here, "..", "dist", "worldmap.js"), banner + "\n" + body + footer);
-console.log("wrote dist/worldmap.js");
+mkdirSync(join(here, "..", "dist"), { recursive: true });
+writeFileSync(join(here, "..", "dist", "mapamundi.js"), banner + "\n" + body + footer);
+console.log("wrote dist/mapamundi.js");

@@ -121,11 +121,11 @@ function span(name, fn) {
   return [out, ms];
 }
 function dbg(...args) {
-  if (WorldMap.debug) console.debug("[worldmap]", ...args);
+  if (WorldMap.debug) console.debug("[mapamundi]", ...args);
 }
 
 export class WorldMap {
-  // Opt-in deep console output ("[worldmap] …"). The perf harness sets this.
+  // Opt-in deep console output ("[mapamundi] …"). The perf harness sets this.
   static debug = false;
   // @param container [HTMLElement] emptied and rendered into; sizing is the
   //   consumer's (the svg scales to the container via viewBox).
@@ -204,7 +204,7 @@ export class WorldMap {
     this._lastRebuild = performance.now();
     const o = this.options;
     const cols = Math.min(o.cols, MAX_COLS);
-    if (o.cols > MAX_COLS) console.warn(`[worldmap] cols capped at ${MAX_COLS} (asked for ${o.cols}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
+    if (o.cols > MAX_COLS) console.warn(`[mapamundi] cols capped at ${MAX_COLS} (asked for ${o.cols}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));
     this.grid = { cols, rows, latRange: o.latRange };
 
@@ -359,7 +359,7 @@ export class WorldMap {
     for (const entry of o.cities) {
       const city = resolveCity(entry);
       if (!city) {
-        console.warn(`[worldmap] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);
+        console.warn(`[mapamundi] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);
         continue;
       }
       const { col, row } = snapToLand(city.lat, city.lon, grid);
@@ -448,7 +448,7 @@ export class WorldMap {
         // once: ambient is DISRECOMMENDED at extreme resolutions.
         if (dots > 7000 && !this._ambientWarned) {
           this._ambientWarned = true;
-          console.warn(`[worldmap] ambient="${o.ambient}" with ${dots} dots: expect dropped frames on mid-range hardware. For animated maps keep cols <= 180 (~4.5k dots); reserve high resolutions for static maps. (Canvas renderer for extreme grids is on the roadmap.)`);
+          console.warn(`[mapamundi] ambient="${o.ambient}" with ${dots} dots: expect dropped frames on mid-range hardware. For animated maps keep cols <= 180 (~4.5k dots); reserve high resolutions for static maps. (Canvas renderer for extreme grids is on the roadmap.)`);
         }
         const dur = o.ambientPeriod;
         const amp = o.ambientHeight * CELL; // cells → SVG units
