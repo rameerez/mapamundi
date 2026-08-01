@@ -66,7 +66,7 @@ export const DEFAULTS = {
   rotate: 0,
   perspective: 1000,
   // Ambient animation over the whole matrix
-  ambient: "none",            // "none" | "wave" | "noise"
+  ambient: "none",            // "none" | "wave" | "noise" | "ripple" | "sweep" | "sparkle"
   ambientDuration: 6,         // seconds per cycle
   ambientIntensity: 8,        // crest height in SVG units (a cell is 10)
   // Interaction
@@ -303,36 +303,51 @@ export class WorldMap {
   #dotsMarkup(grid) {
     const key = `${grid.cols}|${grid.latRange[0]}|${grid.latRange[1]}`;
     const cached = this._dotsCache.get(key);
-    if (cached) { dbg(`dots cache HIT ${key}`); return cached; }
+    if (cached) { dbg(`dots cache HIT ${key}`); this._dotCount = cached.dots; return cached.markup; }
     dbg(`dots cache MISS ${key} — computing`);
 
+    let dots = 0;
     const parts = [`<g class="wm-dots">`];
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
         const c = cellCenter(col, row, grid);
         if (!isLand(c.lat, c.lon)) continue;
+        dots++;
 
-        const pw = ((col + row) / (grid.cols + grid.rows)).toFixed(3);
-        const pn = (((noise2(col * NOISE_PHASE_SCALE, row * NOISE_PHASE_SCALE) + 1) / 2)).toFixed(3);
+        // Every ambient mode is a PHASE FIELD baked per dot; the stylesheet
+        // picks which field feeds the animation delay. All pure functions of
+        // (col,row) — that's what keeps this markup resolution-cacheable.
+        const pw = ((col + row) / (grid.cols + grid.rows)).toFixed(3);          // diagonal front
+        const pn = (((noise2(col * NOISE_PHASE_SCALE, row * NOISE_PHASE_SCALE) + 1) / 2)).toFixed(3); // organic patches
+        const pr = (Math.hypot(col - grid.cols / 2, row - grid.rows / 2) /
+          Math.hypot(grid.cols / 2, grid.rows / 2)).toFixed(3);                 // radial rings
+        const ps = (col / grid.cols).toFixed(3);                                // west→east scanline
+        const pk = (((noise2(col * 3.7 + 9, row * 3.7 + 9) + 1) / 2)).toFixed(3); // uncorrelated twinkle
         // Amplitude octave: 0.55–1.0 so every dot moves, none identically.
         const a = (0.55 + 0.45 * ((noise2(col * NOISE_AMP_SCALE + 47, row * NOISE_AMP_SCALE + 47) + 1) / 2)).toFixed(2);
+        // Density classes for the ambient LOAD GATE: at high resolutions the
+        // stylesheet animates only .wm-h (~1/2) or .wm-t (~1/3) of dots —
+        // SVG transforms are main-thread, and 8k continuous animators melt
+        // frames; a baked checkerboard subset reads identically at density.
+        const density = `${(col + row) % 2 === 0 ? " wm-h" : ""}${(2 * col + 3 * row) % 3 === 0 ? " wm-t" : ""}`;
         parts.push(
           `<g class="wm-pos" transform="translate(${col * CELL + CELL / 2} ${row * CELL + CELL / 2})" data-col="${col}" data-row="${row}">` +
-          `<use class="wm-dot" href="#wm-dot-shape" style="--wm-pw:${pw};--wm-pn:${pn};--wm-a:${a}"/></g>`
+          `<use class="wm-dot${density}" href="#wm-dot-shape" style="--wm-pw:${pw};--wm-pn:${pn};--wm-pr:${pr};--wm-ps:${ps};--wm-pk:${pk};--wm-a:${a}"/></g>`
         );
       }
     }
     parts.push("</g>");
     const markup = parts.join("");
+    this._dotCount = dots;
 
-    this._dotsCache.set(key, markup);
+    this._dotsCache.set(key, { markup, dots });
     // Cap by BYTES, not entries: a resolution sweep can visit dozens of
     // grids and high-res strings run ~1MB each — an entry-count cap
     // measured as tens of MB of retained heap in the perf harness.
     this._cacheBytes = (this._cacheBytes ?? 0) + markup.length;
     while (this._cacheBytes > 4_000_000 && this._dotsCache.size > 1) {
       const oldest = this._dotsCache.keys().next().value;
-      this._cacheBytes -= this._dotsCache.get(oldest).length;
+      this._cacheBytes -= this._dotsCache.get(oldest).markup.length;
       this._dotsCache.delete(oldest);
     }
     return markup;
@@ -416,36 +431,80 @@ export class WorldMap {
         0%, 100% { transform: scale(1); }
         50%      { transform: scale(1.12); }
       }
-      ${o.ambient === "wave" ? `
-      /* The rolling crest: displacement along the plane's Y — under tilt it
-         reads as HEIGHT, a sheet undulating. The active window is 13% of
-         the cycle, so only a thin band of dots is risen at any instant;
-         the rise is fast, the settle slow (water, not metronome). Phase is
-         baked per-dot (--wm-pw), amplitude varies per-dot (--wm-a) so the
-         crest line shimmers instead of ruling a straight edge. */
-      .wm-dots .wm-dot {
-        animation: wm-swell ${o.ambientDuration}s linear infinite;
-        animation-delay: calc(var(--wm-pw) * ${o.ambientDuration}s * -1);
+      ${o.ambient !== "none" ? (() => {
+        // THE LOAD GATE: SVG transforms animate on the main thread, so the
+        // number of continuous animators is the frame budget. Above ~4.5k
+        // dots animate the baked half-density subset, above ~7k the third —
+        // at those densities a subset moving reads identically, at half or
+        // a third of the per-frame style cost. Decided per render from the
+        // real dot count; logged so nobody wonders why some dots sit still.
+        const dots = this._dotCount ?? 0;
+        const sel = dots > 7000 ? ".wm-t" : dots > 4500 ? ".wm-h" : ".wm-dot";
+        if (sel !== ".wm-dot") dbg(`ambient load gate: ${dots} dots → animating ${sel} subset`);
+        const dur = o.ambientDuration;
+        const amp = o.ambientIntensity;
+        const modes = {
+          // A thin rolling crest along the diagonal — event, not texture.
+          wave: `
+      .wm-dots ${sel} {
+        animation: wm-swell ${dur}s linear infinite;
+        animation-delay: calc(var(--wm-pw) * ${dur}s * -1);
       }
       @keyframes wm-swell {
         0%   { transform: translateY(0) scale(1); }
-        5%   { transform: translateY(calc(var(--wm-a, 1) * -${o.ambientIntensity}px)) scale(1.22); }
+        5%   { transform: translateY(calc(var(--wm-a, 1) * -${amp}px)) scale(1.22); }
         13%  { transform: translateY(0) scale(1); }
         100% { transform: translateY(0) scale(1); }
-      }` : ""}
-      ${o.ambient === "noise" ? `
-      /* Organic breathing: phase AND amplitude from two noise octaves, so
-         neighboring patches rise together but never identically — the
-         perlin-material feel. Continuous (no thin window): this mode is
-         texture, wave mode is event. */
-      .wm-dots .wm-dot {
-        animation: wm-drift ${o.ambientDuration}s ease-in-out infinite;
-        animation-delay: calc(var(--wm-pn) * ${o.ambientDuration}s * -1);
+      }`,
+          // Organic two-octave breathing — texture, not event.
+          noise: `
+      .wm-dots ${sel} {
+        animation: wm-drift ${dur}s ease-in-out infinite;
+        animation-delay: calc(var(--wm-pn) * ${dur}s * -1);
       }
       @keyframes wm-drift {
         0%, 100% { transform: translateY(0) scale(1); }
-        50%      { transform: translateY(calc(var(--wm-a, 1) * -${(o.ambientIntensity * 0.75).toFixed(1)}px)) scale(1.1); }
-      }` : ""}
+        50%      { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.75).toFixed(1)}px)) scale(1.1); }
+      }`,
+          // Concentric rings expanding from the map's center.
+          ripple: `
+      .wm-dots ${sel} {
+        animation: wm-ripple ${dur}s linear infinite;
+        animation-delay: calc(var(--wm-pr) * ${dur}s * -1);
+      }
+      @keyframes wm-ripple {
+        0%   { transform: translateY(0) scale(1); }
+        4%   { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.8).toFixed(1)}px)) scale(1.18); }
+        10%  { transform: translateY(0) scale(1); }
+        100% { transform: translateY(0) scale(1); }
+      }`,
+          // A sonar scanline crossing west→east — the thinnest front.
+          sweep: `
+      .wm-dots ${sel} {
+        animation: wm-sweep ${dur}s linear infinite;
+        animation-delay: calc(var(--wm-ps) * ${dur}s * -1);
+      }
+      @keyframes wm-sweep {
+        0%   { transform: translateY(0) scale(1); }
+        2.5% { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.7).toFixed(1)}px)) scale(1.28); }
+        6%   { transform: translateY(0) scale(1); }
+        100% { transform: translateY(0) scale(1); }
+      }`,
+          // Uncorrelated twinkle — quick scale pops scattered by high-freq noise.
+          sparkle: `
+      .wm-dots ${sel} {
+        animation: wm-sparkle ${dur}s linear infinite;
+        animation-delay: calc(var(--wm-pk) * ${dur}s * -1);
+      }
+      @keyframes wm-sparkle {
+        0%   { transform: scale(1); }
+        3%   { transform: scale(calc(1 + var(--wm-a, 1) * 0.45)); }
+        7%   { transform: scale(1); }
+        100% { transform: scale(1); }
+      }`
+        };
+        return modes[o.ambient] ?? "";
+      })() : ""}
       @media (prefers-reduced-motion: reduce) {
         .wm-dot, .wm-marker, .wm-marker-ring { animation: none !important; transition: none !important; }
         .wm-marker-ring { opacity: 0; }
