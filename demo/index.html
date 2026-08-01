@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dotted-world — demo</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; color: #212b35; background: #fff; }
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
+    h1 code { color: #2262fe; }
+    .stage { border: 1px solid #e5e9ef; border-radius: 16px; padding: 1.5rem; overflow: hidden; }
+    .knobs { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: 1.25rem 0; align-items: end; }
+    .knobs label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; font-weight: 600; color: #5b6b7b; }
+    .knobs input, .knobs select { font: inherit; padding: .3rem .5rem; border: 1px solid #cfd8e3; border-radius: 8px; min-width: 7rem; }
+    .knobs input[type="range"] { min-width: 10rem; padding: 0; }
+    #log { font: 12px/1.6 ui-monospace, monospace; color: #5b6b7b; white-space: pre-wrap; min-height: 3em; }
+  </style>
+  <script type="module" src="../dist/dotted-world.js"></script>
+</head>
+<body>
+<main>
+  <h1><code>&lt;dotted-world&gt;</code> demo</h1>
+  <p>Every knob below writes an attribute on the element — that's the whole integration.</p>
+
+  <div class="knobs">
+    <label>cities
+      <input id="cities" value="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney">
+    </label>
+    <label>cols <input id="cols" type="range" min="40" max="240" value="120"></label>
+    <label>dot-shape
+      <select id="dot-shape">
+        <option>circle</option><option>square</option><option>triangle</option>
+      </select>
+    </label>
+    <label>dot-color <input id="dot-color" type="color" value="#d3dce6"></label>
+    <label>marker-color <input id="marker-color" type="color" value="#2262fe"></label>
+    <label>tilt <input id="tilt" type="range" min="0" max="60" value="0"></label>
+    <label>ambient
+      <select id="ambient"><option>none</option><option>wave</option></select>
+    </label>
+    <label>marker-pulse
+      <select id="marker-pulse"><option>true</option><option>false</option></select>
+    </label>
+  </div>
+
+  <div class="stage">
+    <dotted-world id="map"
+      cities="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></dotted-world>
+  </div>
+
+  <p id="log">Click a marker or a dot…</p>
+
+  <script type="module">
+    const map = document.getElementById("map");
+    const log = document.getElementById("log");
+
+    for (const input of document.querySelectorAll(".knobs input, .knobs select")) {
+      input.addEventListener("input", () => map.setAttribute(input.id, input.value));
+    }
+
+    map.addEventListener("dotted-world:cityclick", (e) =>
+      log.textContent = `city click → ${e.detail.name} (${e.detail.lat}, ${e.detail.lon})`);
+    map.addEventListener("dotted-world:dotclick", (e) =>
+      log.textContent = `dot click → lat ${e.detail.lat.toFixed(1)}, lon ${e.detail.lon.toFixed(1)}`);
+  </script>
+</main>
+</body>
+</html>
