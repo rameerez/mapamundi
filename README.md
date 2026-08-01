@@ -122,6 +122,24 @@ animation automatically.
 - **Globe mode** (`projection: "globe"`, rotating) is designed into the API
   as a renderer swap — coordinates are lat/lon everywhere — and planned.
 
+## Performance
+
+Measured, budgeted, and regression-tested (`demo/perf.html` runs scripted
+abuse with hard budgets; `test/` locks the update architecture). The rules
+of thumb the numbers produced:
+
+| you want | keep |
+|---|---|
+| an animated hero (`ambient` on) | `cols ≤ 180` (≈4.5k dots) — full smoothness |
+| an animated map at higher density | the built-in load gate animates a baked subset above 4.5k/7k dots automatically |
+| maximum resolution (`cols` 200–260) | `ambient="none"` — static maps stay cheap at any size |
+
+Resolution changes are debounced adaptively (spacing self-tunes to your
+machine's measured frame cost), style/color/animation knobs never rebuild
+geometry, and SVG stays the renderer up to 260 cols — dots are real,
+hoverable, restylable elements. A canvas mode for extreme grids is on the
+roadmap behind the same options.
+
 ## Data
 
 Land shapes derived from [Natural Earth](https://www.naturalearthdata.com)

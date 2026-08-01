@@ -634,6 +634,14 @@ export class WorldMap {
         const dots = this._dotCount ?? 0;
         const sel = dots > 7000 ? ".wm-t" : dots > 4500 ? ".wm-h" : ".wm-dot";
         if (sel !== ".wm-dot") dbg(`ambient load gate: ${dots} dots → animating ${sel} subset`);
+        // Above the top gate, even the third-subset can drop frames on
+        // mid-range hardware — SVG animation cost scales with animator
+        // count and there is no compositor escape hatch. Say so out loud,
+        // once: ambient is DISRECOMMENDED at extreme resolutions.
+        if (dots > 7000 && !this._ambientWarned) {
+          this._ambientWarned = true;
+          console.warn(`[worldmap] ambient="${o.ambient}" with ${dots} dots: expect dropped frames on mid-range hardware. For animated maps keep cols <= 180 (~4.5k dots); reserve high resolutions for static maps. (Canvas renderer for extreme grids is on the roadmap.)`);
+        }
         const dur = o.ambientPeriod;
         const amp = o.ambientHeight * CELL; // cells → SVG units
         // Window math: each mode's front is a multiple of ambientWidth.
