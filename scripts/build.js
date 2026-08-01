@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds dist/dotted-world.js — ONE self-contained ESM file, because the
+// Builds dist/worldmap.js — ONE self-contained ESM file, because the
 // whole point is zero-friction consumption: a single <script type="module">,
 // one importmap pin, one CDN URL. No bundler dependency: the module graph is
 // a hand-ordered list and imports are internal-only, so "bundling" is
@@ -24,9 +24,9 @@ const body = MODULES.map((file) => {
   return `// ══════════ src/${file} ══════════\n${code}`;
 }).join("\n\n");
 
-const banner = `// dotted-world v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
+const banner = `// worldmap v${JSON.parse(readFileSync(join(here, "..", "package.json"))).version}
 // A dotted world map as a zero-dependency web component. MIT license.
-// https://github.com/rameerez/dotted-world
+// https://github.com/rameerez/worldmap
 // Land data: Natural Earth (public domain, naturalearthdata.com).
 // GENERATED from src/ by scripts/build.js — edit src/, not this file.
 `;
@@ -36,5 +36,5 @@ const footer = `
 if (typeof customElements !== "undefined") register();
 `;
 
-writeFileSync(join(here, "..", "dist", "dotted-world.js"), banner + "\n" + body + footer);
-console.log("wrote dist/dotted-world.js");
+writeFileSync(join(here, "..", "dist", "worldmap.js"), banner + "\n" + body + footer);
+console.log("wrote dist/worldmap.js");

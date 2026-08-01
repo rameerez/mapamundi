@@ -1,14 +1,14 @@
-// <dotted-world> — the zero-JS way in. Every renderer option that makes
+// <world-map> — the zero-JS way in. Every renderer option that makes
 // sense as markup is an attribute; change an attribute, the map re-renders.
 //
-//   <dotted-world cities="London, Lagos, Singapore" tilt="40"
-//                 dot-shape="circle" marker-color="#2262fe"></dotted-world>
+//   <world-map cities="London, Lagos, Singapore" tilt="40"
+//                 dot-shape="circle" marker-color="#2262fe"></world-map>
 //
 // Callbacks aren't attributes (functions don't serialize) — listen for the
-// bubbling CustomEvents instead: dotted-world:cityclick, :cityenter,
-// :dotclick, :dotenter. For full control, use the DottedWorld class.
+// bubbling CustomEvents instead: worldmap:cityclick, :cityenter,
+// :dotclick, :dotenter. For full control, use the WorldMap class.
 
-import { DottedWorld } from "./renderer.js";
+import { WorldMap } from "./renderer.js";
 
 const ATTR_MAP = {
   // attribute      → [option, parser]
@@ -39,14 +39,14 @@ const ATTR_MAP = {
 // evaluates at definition time, and this module must stay importable where
 // no DOM exists (Node tests, SSR pipelines). There, the element export is
 // null and register() no-ops — the data/geometry APIs still work.
-export const DottedWorldElement = typeof HTMLElement === "undefined" ? null :
-class DottedWorldElement extends HTMLElement {
+export const WorldMapElement = typeof HTMLElement === "undefined" ? null :
+class WorldMapElement extends HTMLElement {
   static observedAttributes = Object.keys(ATTR_MAP);
 
   connectedCallback() {
-    // Light DOM on purpose: consumers restyle .dw-dot/.dw-marker with plain
+    // Light DOM on purpose: consumers restyle .wm-dot/.wm-marker with plain
     // CSS — a shadow root would wall that off for zero benefit here.
-    this.map = new DottedWorld(this, this.#optionsFromAttributes());
+    this.map = new WorldMap(this, this.#optionsFromAttributes());
   }
 
   disconnectedCallback() {
@@ -74,7 +74,7 @@ class DottedWorldElement extends HTMLElement {
   }
 };
 
-export function register(tag = "dotted-world") {
-  if (!DottedWorldElement || customElements.get(tag)) return;
-  customElements.define(tag, DottedWorldElement);
+export function register(tag = "world-map") {
+  if (!WorldMapElement || customElements.get(tag)) return;
+  customElements.define(tag, WorldMapElement);
 }

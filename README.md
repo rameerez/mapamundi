@@ -1,4 +1,4 @@
-# dotted-world
+# worldmap
 
 **A dotted world map as a zero-dependency web component.** Land dots derived
 from a packed bitmask at any resolution, a built-in city registry (just type
@@ -6,9 +6,9 @@ from a packed bitmask at any resolution, a built-in city registry (just type
 no build step, no dependencies.
 
 ```html
-<script type="module" src="https://unpkg.com/dotted-world"></script>
+<script type="module" src="https://unpkg.com/worldmap"></script>
 
-<dotted-world cities="London, Lagos, Singapore" tilt="40"></dotted-world>
+<world-map cities="London, Lagos, Singapore" tilt="40"></world-map>
 ```
 
 That's the whole integration.
@@ -17,7 +17,7 @@ That's the whole integration.
 
 Every SaaS hero section eventually wants the dotted world with glowing city
 markers. The usual path is a designer's frozen SVG: thousands of hardcoded
-rectangles, cities placed by eye, one resolution forever. `dotted-world`
+rectangles, cities placed by eye, one resolution forever. `worldmap`
 derives the dots from a ~22 KB packed land bitmask instead — so resolution,
 dot shape, projection framing, and city markers are all runtime parameters,
 and "add Nairobi" is typing `Nairobi`.
@@ -25,26 +25,26 @@ and "add Nairobi" is typing `Nairobi`.
 ## Install
 
 ```bash
-npm install dotted-world
+npm install worldmap
 ```
 
 Or skip npm entirely — it's one file:
 
 ```html
-<script type="module" src="https://unpkg.com/dotted-world"></script>
+<script type="module" src="https://unpkg.com/worldmap"></script>
 ```
 
 Rails with importmaps:
 
 ```ruby
 # config/importmap.rb
-pin "dotted-world", to: "dotted-world.js" # vendor dist/dotted-world.js
+pin "worldmap", to: "worldmap.js" # vendor dist/worldmap.js
 ```
 
 ## The element
 
 ```html
-<dotted-world
+<world-map
   cities="London, Lagos, Singapore, New York"
   cols="140"
   dot-shape="circle"
@@ -53,25 +53,25 @@ pin "dotted-world", to: "dotted-world.js" # vendor dist/dotted-world.js
   marker-pulse="true"
   tilt="40"
   ambient="wave"
-></dotted-world>
+></world-map>
 ```
 
 Attributes are live — change one, the map re-renders. Interaction bubbles as
 DOM events:
 
 ```js
-map.addEventListener("dotted-world:cityclick", (e) => {
+map.addEventListener("worldmap:cityclick", (e) => {
   console.log(e.detail.name, e.detail.lat, e.detail.lon);
 });
-// also: dotted-world:cityenter, :dotclick, :dotenter
+// also: worldmap:cityenter, :dotclick, :dotenter
 ```
 
 ## The JS API
 
 ```js
-import { DottedWorld } from "dotted-world";
+import { WorldMap } from "worldmap";
 
-const map = new DottedWorld(document.querySelector("#hero-map"), {
+const map = new WorldMap(document.querySelector("#hero-map"), {
   cols: 140,                       // dots across the world — the resolution
   latRange: [-58, 84],             // default framing cuts Antarctica
   dotShape: "circle",              // "circle" | "square" | "triangle" | SVG path (24×24)
@@ -104,8 +104,8 @@ your own renderer on the same data.
 
 ## Styling
 
-The component renders into light DOM with plain classes (`.dw-dot`,
-`.dw-marker`, `.dw-svg`, `.dw-tilt`) — your stylesheet wins. The built-in
+The component renders into light DOM with plain classes (`.wm-dot`,
+`.wm-marker`, `.wm-svg`, `.wm-tilt`) — your stylesheet wins. The built-in
 styles are defaults, not law. `prefers-reduced-motion` disables all
 animation automatically.
 
@@ -133,7 +133,7 @@ never run it.
 
 ```bash
 node scripts/generate-mask.js   # refresh src/mask.js from Natural Earth
-node scripts/build.js           # bundle src/ → dist/dotted-world.js
+node scripts/build.js           # bundle src/ → dist/worldmap.js
 node --test test/               # the suite runs against dist/
 ```
 

@@ -1,11 +1,11 @@
 {
-  "name": "dotted-world",
+  "name": "worldmap",
   "version": "0.1.0",
   "description": "A dotted world map as a zero-dependency web component: land dots derived from a packed bitmask at any resolution, a built-in city registry (just type \"London\"), shapes, tilt, pulse markers, hover/click events. One ESM file, no build step.",
   "type": "module",
-  "main": "dist/dotted-world.js",
+  "main": "dist/worldmap.js",
   "exports": {
-    ".": "./dist/dotted-world.js"
+    ".": "./dist/worldmap.js"
   },
   "files": [
     "dist/",
@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rameerez/dotted-world.git"
+    "url": "https://github.com/rameerez/worldmap.git"
   },
   "sideEffects": false
 }

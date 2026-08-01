@@ -10,7 +10,7 @@
 //   per-dot — per-node listeners at 5k dots would dwarf the render cost.
 // - Every visual knob lands in CSS custom properties or attributes so the
 //   ambient animations (CSS keyframes) stay off the main thread. The wave
-//   delay is precomputed per-dot into --dw-delay.
+//   delay is precomputed per-dot into --wm-delay.
 // - The tilt is a perspective + rotateX on a WRAPPER around the svg — the
 //   svg itself must stay untransformed or getBoundingClientRect-based
 //   tooltip positioning (a consumer concern) breaks in surprising ways.
@@ -48,7 +48,7 @@ export const DEFAULTS = {
   markerCursor: "pointer",
   interactive: true,          // false = pure decoration (no listeners, no hover)
   // Callbacks — every handler also fires as a DOM CustomEvent on the
-  // container ("dotted-world:cityclick" etc.) so framework users can
+  // container ("worldmap:cityclick" etc.) so framework users can
   // addEventListener instead of passing functions.
   onDotClick: null,           // ({ lat, lon, col, row, element })
   onDotEnter: null,
@@ -89,7 +89,7 @@ const CELL = 10; // internal SVG units per grid cell — arbitrary, never expose
     return { col: col0, row: row0 };
   }
 
-export class DottedWorld {
+export class WorldMap {
   // @param container [HTMLElement] emptied and rendered into; sizing is the
   //   consumer's (the svg scales to the container via viewBox).
   // @param options   [Object] see DEFAULTS.
@@ -119,7 +119,7 @@ export class DottedWorld {
 
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("class", "dw-svg");
+    svg.setAttribute("class", "wm-svg");
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", this.#ariaLabel());
 
@@ -128,7 +128,7 @@ export class DottedWorld {
     svg.appendChild(this.#markers(grid, o));
 
     const tiltWrap = document.createElement("div");
-    tiltWrap.className = "dw-tilt";
+    tiltWrap.className = "wm-tilt";
     tiltWrap.appendChild(svg);
 
     this.container.replaceChildren(this.#style(o), tiltWrap);
@@ -145,8 +145,8 @@ export class DottedWorld {
 
   #defs(o) {
     const defs = document.createElementNS(SVG_NS, "defs");
-    defs.appendChild(this.#shapeDef("dw-dot-shape", o.dotShape, o.dotSize));
-    defs.appendChild(this.#shapeDef("dw-marker-shape", o.markerShape, o.dotSize * o.markerScale));
+    defs.appendChild(this.#shapeDef("wm-dot-shape", o.dotShape, o.dotSize));
+    defs.appendChild(this.#shapeDef("wm-marker-shape", o.markerShape, o.dotSize * o.markerScale));
     return defs;
   }
 
@@ -183,7 +183,7 @@ export class DottedWorld {
 
   #dots(grid, o) {
     const g = document.createElementNS(SVG_NS, "g");
-    g.setAttribute("class", "dw-dots");
+    g.setAttribute("class", "wm-dots");
     const maxDist = Math.hypot(grid.cols, grid.rows);
 
     for (let row = 0; row < grid.rows; row++) {
@@ -192,16 +192,16 @@ export class DottedWorld {
         if (!isLand(c.lat, c.lon)) continue;
 
         const use = document.createElementNS(SVG_NS, "use");
-        use.setAttribute("href", "#dw-dot-shape");
+        use.setAttribute("href", "#wm-dot-shape");
         use.setAttribute("x", col * CELL + CELL / 2);
         use.setAttribute("y", row * CELL + CELL / 2);
-        use.setAttribute("class", "dw-dot");
+        use.setAttribute("class", "wm-dot");
         use.dataset.col = col;
         use.dataset.row = row;
         if (o.ambient === "wave") {
           // Radial delay from the top-left → a wave sweeping the matrix.
           const delay = (Math.hypot(col, row) / maxDist) * o.ambientDuration;
-          use.style.setProperty("--dw-delay", `${delay.toFixed(2)}s`);
+          use.style.setProperty("--wm-delay", `${delay.toFixed(2)}s`);
         }
         g.appendChild(use);
       }
@@ -211,20 +211,20 @@ export class DottedWorld {
 
   #markers(grid, o) {
     const g = document.createElementNS(SVG_NS, "g");
-    g.setAttribute("class", "dw-markers");
+    g.setAttribute("class", "wm-markers");
 
     for (const entry of o.cities) {
       const city = resolveCity(entry);
       if (!city) {
-        console.warn(`[dotted-world] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);
+        console.warn(`[worldmap] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);
         continue;
       }
       const { col, row } = this.snapToLand(city.lat, city.lon, grid);
       const use = document.createElementNS(SVG_NS, "use");
-      use.setAttribute("href", "#dw-marker-shape");
+      use.setAttribute("href", "#wm-marker-shape");
       use.setAttribute("x", col * CELL + CELL / 2);
       use.setAttribute("y", row * CELL + CELL / 2);
-      use.setAttribute("class", "dw-marker");
+      use.setAttribute("class", "wm-marker");
       if (city.color) use.style.fill = city.color;
       use.dataset.city = city.name;
       use.dataset.lat = city.lat;
@@ -244,13 +244,13 @@ export class DottedWorld {
   #style(o) {
     const style = document.createElement("style");
     style.textContent = `
-      .dw-tilt { perspective: ${o.perspective}px; }
-      .dw-tilt .dw-svg {
+      .wm-tilt { perspective: ${o.perspective}px; }
+      .wm-tilt .wm-svg {
         width: 100%; height: auto; display: block;
         transform: rotateX(${o.tilt}deg) rotateZ(${o.rotate}deg);
         transform-style: preserve-3d;
       }
-      .dw-dot {
+      .wm-dot {
         fill: ${o.dotColor};
         transform-origin: center;
         transform-box: fill-box;
@@ -258,39 +258,39 @@ export class DottedWorld {
         transition: transform .25s ease, fill .25s ease;
       }
       ${o.interactive ? `
-      .dw-dot:hover {
+      .wm-dot:hover {
         fill: ${o.dotHoverColor};
         transform: scale(${o.dotHoverScale});
         transition: none;
       }` : ""}
-      .dw-marker {
+      .wm-marker {
         fill: ${o.markerColor};
         transform-origin: center;
         transform-box: fill-box;
         cursor: ${o.markerCursor};
-        ${o.markerPulse ? "animation: dw-pulse 2.6s ease-in-out infinite;" : ""}
+        ${o.markerPulse ? "animation: wm-pulse 2.6s ease-in-out infinite;" : ""}
       }
       ${o.interactive ? `
-      .dw-marker:hover, .dw-marker:focus-visible {
+      .wm-marker:hover, .wm-marker:focus-visible {
         animation: none;
         transform: scale(${o.markerHoverScale});
         outline: none;
       }` : ""}
-      @keyframes dw-pulse {
+      @keyframes wm-pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.45); }
       }
       ${o.ambient === "wave" ? `
-      .dw-dot {
-        animation: dw-wave ${o.ambientDuration}s ease-in-out infinite;
-        animation-delay: var(--dw-delay, 0s);
+      .wm-dot {
+        animation: wm-wave ${o.ambientDuration}s ease-in-out infinite;
+        animation-delay: var(--wm-delay, 0s);
       }
-      @keyframes dw-wave {
+      @keyframes wm-wave {
         0%, 100% { opacity: 1; }
         50% { opacity: .45; }
       }` : ""}
       @media (prefers-reduced-motion: reduce) {
-        .dw-dot, .dw-marker { animation: none !important; transition: none; }
+        .wm-dot, .wm-marker { animation: none !important; transition: none; }
       }
     `;
     return style;
@@ -300,7 +300,7 @@ export class DottedWorld {
 
   #bindEvents(svg, grid, o) {
     const detailFor = (target) => {
-      if (target.classList.contains("dw-marker")) {
+      if (target.classList.contains("wm-marker")) {
         return { kind: "city", detail: {
           name: target.dataset.city,
           lat: Number(target.dataset.lat),
@@ -308,7 +308,7 @@ export class DottedWorld {
           element: target
         } };
       }
-      if (target.classList.contains("dw-dot")) {
+      if (target.classList.contains("wm-dot")) {
         const col = Number(target.dataset.col), row = Number(target.dataset.row);
         const c = cellCenter(col, row, grid);
         return { kind: "dot", detail: { lat: c.lat, lon: c.lon, col, row, element: target } };
@@ -320,7 +320,7 @@ export class DottedWorld {
       const cb = o[`on${kind === "city" ? "City" : "Dot"}${phase}`];
       if (cb) cb(detail);
       this.container.dispatchEvent(new CustomEvent(
-        `dotted-world:${kind}${phase.toLowerCase()}`,
+        `worldmap:${kind}${phase.toLowerCase()}`,
         { detail, bubbles: true }
       ));
     };

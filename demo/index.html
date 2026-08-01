@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dotted-world — demo</title>
+  <title>worldmap — demo</title>
   <style>
     :root { color-scheme: light; }
     body { margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; color: #212b35; background: #fff; }
@@ -17,11 +17,11 @@
     .knobs input[type="range"] { min-width: 10rem; padding: 0; }
     #log { font: 12px/1.6 ui-monospace, monospace; color: #5b6b7b; white-space: pre-wrap; min-height: 3em; }
   </style>
-  <script type="module" src="../dist/dotted-world.js"></script>
+  <script type="module" src="../dist/worldmap.js"></script>
 </head>
 <body>
 <main>
-  <h1><code>&lt;dotted-world&gt;</code> demo</h1>
+  <h1><code>&lt;world-map&gt;</code> demo</h1>
   <p>Every knob below writes an attribute on the element — that's the whole integration.</p>
 
   <div class="knobs">
@@ -46,8 +46,8 @@
   </div>
 
   <div class="stage">
-    <dotted-world id="map"
-      cities="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></dotted-world>
+    <world-map id="map"
+      cities="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></world-map>
   </div>
 
   <p id="log">Click a marker or a dot…</p>
@@ -60,9 +60,9 @@
       input.addEventListener("input", () => map.setAttribute(input.id, input.value));
     }
 
-    map.addEventListener("dotted-world:cityclick", (e) =>
+    map.addEventListener("worldmap:cityclick", (e) =>
       log.textContent = `city click → ${e.detail.name} (${e.detail.lat}, ${e.detail.lon})`);
-    map.addEventListener("dotted-world:dotclick", (e) =>
+    map.addEventListener("worldmap:dotclick", (e) =>
       log.textContent = `dot click → lat ${e.detail.lat.toFixed(1)}, lon ${e.detail.lon.toFixed(1)}`);
   </script>
 </main>
