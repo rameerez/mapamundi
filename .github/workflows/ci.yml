@@ -1,0 +1,20 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the single-file bundle from src/
+        run: node scripts/build.js
+      - name: Built artifact must be committed and current
+        run: git diff --exit-code dist/
+      - name: Test suite (runs against dist/)
+        run: node --test test/

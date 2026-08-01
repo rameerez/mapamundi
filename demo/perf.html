@@ -80,12 +80,26 @@
       }
     };
 
+    // Wait until the ADAPTIVE debounce actually delivers the rebuild —
+    // a fixed settle measured the previous scene once spacing self-tuned
+    // past it (the vacuous cols=240 PASS of 2026-08-01).
+    async function waitForRebuild(prevNodes, timeoutMs = 2500) {
+      const t0 = performance.now();
+      while (performance.now() - t0 < timeoutMs) {
+        await settle(100);
+        if (nodeCount() !== prevNodes) { await settle(300); return true; }
+      }
+      console.warn("[wm-perf] waitForRebuild timed out — scene unchanged");
+      return false;
+    }
+
     async function initialRenderTimes() {
       for (const cols of [120, 180, 240]) {
         takeLongTasks();
+        const before = nodeCount();
         const t0 = performance.now();
         map.setAttribute("cols", cols);
-        await settle();
+        await waitForRebuild(before);
         const tasks = takeLongTasks();
         const worst = Math.max(0, ...tasks.map((t) => t.duration));
         row(`render cols=${cols}`, "worst main-thread task", `${worst.toFixed(0)}ms`, "< 200ms", worst < 200);
