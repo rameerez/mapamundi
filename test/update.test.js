@@ -39,16 +39,18 @@ test("style-tier options never trigger a geometry rebuild", () => {
 
     map.update({ dotColor: "#111" });
     map.update({ ambient: "noise" });
-    map.update({ ambientDuration: 9 });
+    map.update({ ambientPeriod: 9 });
+    map.update({ ambientHeight: 1.2 });
+    map.update({ ambientWidth: 0.08 });
     map.update({ tilt: 40, perspective: 800 });
     map.update({ markerColor: "#f00" });
-    assert.equal(stylePatches, 5);
+    assert.equal(stylePatches, 7);
 
     map.update({ onCityClick: () => {} }); // callbacks are free — no patch at all
-    assert.equal(stylePatches, 5);
+    assert.equal(stylePatches, 7);
 
     map.update({ dotColor: "#111" }); // unchanged value — no work
-    assert.equal(stylePatches, 5);
+    assert.equal(stylePatches, 7);
   } finally {
     WorldMap.prototype.render = orig;
   }

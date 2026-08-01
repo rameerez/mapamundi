@@ -257,10 +257,11 @@ export const DEFAULTS = {
   tilt: 0,
   rotate: 0,
   perspective: 1000,
-  // Ambient animation over the whole matrix
+  // Ambient animation over the whole matrix. Three plain-language knobs:
   ambient: "none",            // "none" | "wave" | "noise" | "ripple" | "sweep" | "sparkle"
-  ambientDuration: 6,         // seconds per cycle
-  ambientIntensity: 8,        // crest height in SVG units (a cell is 10)
+  ambientPeriod: 6,           // seconds per full cycle (bigger = slower)
+  ambientHeight: 0.8,         // crest height, in CELLS (1 = one grid cell)
+  ambientWidth: 0.13,         // crest window as a fraction of the cycle (smaller = thinner front)
   // Interaction
   cursor: "default",
   markerCursor: "pointer",
@@ -278,7 +279,7 @@ export const DEFAULTS = {
 const STYLE_KEYS = new Set([
   "dotColor", "dotHoverColor", "dotHoverScale", "markerColor",
   "markerHoverScale", "tilt", "rotate", "perspective",
-  "ambient", "ambientDuration", "ambientIntensity", "cursor", "markerCursor"
+  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor"
 ]);
 const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
 const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
@@ -633,8 +634,15 @@ export class WorldMap {
         const dots = this._dotCount ?? 0;
         const sel = dots > 7000 ? ".wm-t" : dots > 4500 ? ".wm-h" : ".wm-dot";
         if (sel !== ".wm-dot") dbg(`ambient load gate: ${dots} dots → animating ${sel} subset`);
-        const dur = o.ambientDuration;
-        const amp = o.ambientIntensity;
+        const dur = o.ambientPeriod;
+        const amp = o.ambientHeight * CELL; // cells → SVG units
+        // Window math: each mode's front is a multiple of ambientWidth.
+        // rise ≈ 38% into the window (fast up), settle at its end (slow down).
+        const win = (mult) => {
+          const w = Math.min(0.9, Math.max(0.02, o.ambientWidth * mult));
+          return { rise: (w * 38).toFixed(1), settle: (w * 100).toFixed(1) };
+        };
+        const wWave = win(1), wRipple = win(0.8), wSweep = win(0.5), wSparkle = win(0.55);
         const modes = {
           // A thin rolling crest along the diagonal — event, not texture.
           wave: `
@@ -644,8 +652,8 @@ export class WorldMap {
       }
       @keyframes wm-swell {
         0%   { transform: translateY(0) scale(1); }
-        5%   { transform: translateY(calc(var(--wm-a, 1) * -${amp}px)) scale(1.22); }
-        13%  { transform: translateY(0) scale(1); }
+        ${wWave.rise}%  { transform: translateY(calc(var(--wm-a, 1) * -${amp}px)) scale(1.22); }
+        ${wWave.settle}% { transform: translateY(0) scale(1); }
         100% { transform: translateY(0) scale(1); }
       }`,
           // Organic two-octave breathing — texture, not event.
@@ -666,8 +674,8 @@ export class WorldMap {
       }
       @keyframes wm-ripple {
         0%   { transform: translateY(0) scale(1); }
-        4%   { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.8).toFixed(1)}px)) scale(1.18); }
-        10%  { transform: translateY(0) scale(1); }
+        ${wRipple.rise}%  { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.8).toFixed(1)}px)) scale(1.18); }
+        ${wRipple.settle}% { transform: translateY(0) scale(1); }
         100% { transform: translateY(0) scale(1); }
       }`,
           // A sonar scanline crossing west→east — the thinnest front.
@@ -678,8 +686,8 @@ export class WorldMap {
       }
       @keyframes wm-sweep {
         0%   { transform: translateY(0) scale(1); }
-        2.5% { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.7).toFixed(1)}px)) scale(1.28); }
-        6%   { transform: translateY(0) scale(1); }
+        ${wSweep.rise}% { transform: translateY(calc(var(--wm-a, 1) * -${(amp * 0.7).toFixed(1)}px)) scale(1.28); }
+        ${wSweep.settle}% { transform: translateY(0) scale(1); }
         100% { transform: translateY(0) scale(1); }
       }`,
           // Uncorrelated twinkle — quick scale pops scattered by high-freq noise.
@@ -690,8 +698,8 @@ export class WorldMap {
       }
       @keyframes wm-sparkle {
         0%   { transform: scale(1); }
-        3%   { transform: scale(calc(1 + var(--wm-a, 1) * 0.45)); }
-        7%   { transform: scale(1); }
+        ${wSparkle.rise}% { transform: scale(calc(1 + var(--wm-a, 1) * 0.45)); }
+        ${wSparkle.settle}% { transform: scale(1); }
         100% { transform: scale(1); }
       }`
         };
@@ -831,8 +839,9 @@ const ATTR_MAP = {
   "rotate":           ["rotate", Number],
   "perspective":      ["perspective", Number],
   "ambient":          ["ambient", String],
-  "ambient-duration": ["ambientDuration", Number],
-  "ambient-intensity": ["ambientIntensity", Number],
+  "ambient-period": ["ambientPeriod", Number],
+  "ambient-height": ["ambientHeight", Number],
+  "ambient-width": ["ambientWidth", Number],
   "cursor":           ["cursor", String],
   "marker-cursor":    ["markerCursor", String],
   "interactive":      ["interactive", (v) => v !== "false"]

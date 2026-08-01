@@ -181,7 +181,7 @@
       }
       // The reported worst case: max resolution, max intensity, noise.
       map.setAttribute("cols", "260");
-      map.setAttribute("ambient-intensity", "16");
+      map.setAttribute("ambient-height", "1.6");
       map.setAttribute("ambient", "noise");
       await settle(1200);
       takeLongTasks();
@@ -191,9 +191,9 @@
       await settle(3000);
       counting = false;
       dumpDeep("ambient worst case", takeLongTasks());
-      row("ambient noise (cols=260, intensity=16)", "steady-state fps", (frames / 3).toFixed(0), "> 40", frames / 3 > 40);
+      row("ambient noise (cols=260, height=1.6)", "steady-state fps", (frames / 3).toFixed(0), "> 40", frames / 3 > 40);
       map.setAttribute("ambient", "none");
-      map.setAttribute("ambient-intensity", "8");
+      map.setAttribute("ambient-height", "0.8");
       map.setAttribute("tilt", "0");
       map.setAttribute("cols", "120");
       await settle(1500);

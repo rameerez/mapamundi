@@ -29,8 +29,9 @@ const ATTR_MAP = {
   "rotate":           ["rotate", Number],
   "perspective":      ["perspective", Number],
   "ambient":          ["ambient", String],
-  "ambient-duration": ["ambientDuration", Number],
-  "ambient-intensity": ["ambientIntensity", Number],
+  "ambient-period": ["ambientPeriod", Number],
+  "ambient-height": ["ambientHeight", Number],
+  "ambient-width": ["ambientWidth", Number],
   "cursor":           ["cursor", String],
   "marker-cursor":    ["markerCursor", String],
   "interactive":      ["interactive", (v) => v !== "false"]
