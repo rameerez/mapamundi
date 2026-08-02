@@ -251,10 +251,21 @@ export class GlobeRenderer {
     this._raf = null;
     this._t = null;
 
+    // <world-map> is inline by default — an inline container has
+    // clientWidth 0, which turned v0.3.0's first cut into a stretched
+    // ribbon (square backing store, rectangular CSS box). Two guarantees
+    // fix it for good: the host becomes a block, and the canvas box is
+    // aspect-locked square via CSS so display and backing store can never
+    // disagree on shape.
+    if (typeof getComputedStyle === "function" &&
+        getComputedStyle(container).display === "inline") {
+      container.style.display = "block";
+    }
     this.canvas = document.createElement("canvas");
     this.canvas.className = "wm-globe";
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
+    this.canvas.style.aspectRatio = "1 / 1";
     container.replaceChildren(this.canvas);
     this.ctx = this.canvas.getContext("2d");
 
@@ -278,8 +289,10 @@ export class GlobeRenderer {
       this._io.observe(this.canvas);
     }
     if (typeof ResizeObserver === "function") {
+      // Observe the canvas itself: its CSS box (100% wide, aspect-locked
+      // square) is the ground truth the backing store must match.
       this._ro = new ResizeObserver(() => this._resize());
-      this._ro.observe(this.container);
+      this._ro.observe(this.canvas);
     }
 
     this._resize(); // sizes the canvas and draws the first frame
@@ -318,12 +331,12 @@ export class GlobeRenderer {
   }
 
   _resize() {
-    const side = this.container.clientWidth || 300;
+    const rect = this.canvas.getBoundingClientRect();
+    const side = rect.width || this.container.clientWidth || 300;
     const dpr = (typeof devicePixelRatio === "number" && devicePixelRatio) || 1;
     this.side = side;
-    this.canvas.width = Math.round(side * dpr);
-    this.canvas.height = Math.round(side * dpr);
-    this.canvas.style.height = `${side}px`;
+    this.canvas.width = Math.max(1, Math.round(side * dpr));
+    this.canvas.height = Math.max(1, Math.round(side * dpr));
     this._dpr = dpr;
     this._draw();
   }
@@ -349,7 +362,7 @@ export class GlobeRenderer {
 
     const cx = side / 2;
     const cy = side / 2;
-    const R = side * 0.43;
+    const R = side * 0.40; // breathing room — the halo must not kiss the edges
 
     // The halo: a hairline orbit just outside the sphere.
     ctx.beginPath();

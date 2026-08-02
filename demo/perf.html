@@ -197,6 +197,27 @@
       map.setAttribute("tilt", "0");
       map.setAttribute("cols", "120");
       await settle(1500);
+
+      // Globe stress: max resolution, fast spin — canvas holds or the mode
+      // ships broken. Also proves the flat→globe→flat renderer swap works
+      // under the same instrumentation.
+      takeLongTasks();
+      map.setAttribute("mode", "globe");
+      map.setAttribute("cols", "260");
+      map.setAttribute("rotate-speed", "30");
+      await settle(800);
+      let gframes = 0, gcount = true;
+      const gtick = () => { if (gcount) { gframes++; requestAnimationFrame(gtick); } };
+      requestAnimationFrame(gtick);
+      await settle(3000);
+      gcount = false;
+      dumpDeep("globe stress", takeLongTasks());
+      row("globe (cols=260, speed=30)", "steady-state fps", (gframes / 3).toFixed(0), "> 50", gframes / 3 > 50);
+      map.setAttribute("mode", "flat");
+      map.setAttribute("rotate-speed", "4");
+      map.setAttribute("cols", "120");
+      await settle(1500);
+      row("globe → flat swap", "svg restored", document.querySelector("world-map svg") ? "yes" : "NO", "yes", !!document.querySelector("world-map svg"));
     }
 
     async function hoverStorm() {
