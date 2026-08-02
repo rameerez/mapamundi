@@ -1,5 +1,5 @@
 // Compact 2D value noise — smooth, deterministic, zero-dependency. Used to
-// shape animation animation DELAY fields (animation: "noise"): neighboring dots
+// shape animation DELAY fields (animation: "noise"): neighboring dots
 // get neighboring phases, so the matrix shimmers in organic patches instead
 // of mechanical sweeps. Not full simplex noise — for picking per-dot delays
 // once at render time, smooth value noise is indistinguishable and a third

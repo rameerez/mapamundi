@@ -1,7 +1,7 @@
 {
   "name": "mappo",
   "version": "0.3.0",
-  "description": "A dotted world map as a zero-dependency web component: land dots derived from a packed bitmask at any resolution, a built-in city registry (just type \"London\"), shapes, tilt, pulse markers, hover/click events. One ESM file, no build step.",
+  "description": "A dotted world map as a zero-dependency web component: flat SVG map or rotating canvas globe. Land dots at any resolution, a built-in city registry (just type \"London\"), six animations, drag-to-spin with momentum, hover/click events. One ESM file, no build step.",
   "type": "module",
   "main": "dist/mappo.js",
   "exports": {
@@ -28,7 +28,11 @@
     "cities",
     "visualization",
     "hero",
-    "zero-dependency"
+    "zero-dependency",
+    "globe",
+    "3d-globe",
+    "rotating-globe",
+    "canvas"
   ],
   "author": "rameerez",
   "license": "MIT",

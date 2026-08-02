@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mappo — dotted world map web component · 23 KB ES module, no build step</title>
-  <meta name="description" content="A dotted world map as a single ES module — 20 KB gzipped, zero dependencies, no build step. Use it with a plain script tag, an import map, or npm. Any resolution, city markers by name (just type London), six animation animations, tilt, hover and click events.">
+  <title>mappo — dotted world map web component · 28 KB ES module, no build step</title>
+  <meta name="description" content="A dotted world map as a single ES module — flat map or rotating 3D globe, 28 KB gzipped, zero dependencies, no build step. Use it with a plain script tag, an import map, or npm. Any resolution, city markers by name (just type London), six animations, drag-to-spin, hover and click events.">
   <link rel="canonical" href="https://rameerez.github.io/mappo/">
-  <meta property="og:title" content="mappo — dotted world map web component · 23 KB ESM, no build step">
-  <meta property="og:description" content="The dotted world map every hero section wants — one 23 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
+  <meta property="og:title" content="mappo — dotted world map web component · 28 KB ESM, no build step">
+  <meta property="og:description" content="The dotted world map every hero section wants — one 28 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rameerez.github.io/mappo/">
   <script type="application/ld+json">
@@ -15,7 +15,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
     "name": "mappo",
-    "description": "A dotted world map as a zero-dependency web component: land dots derived from a packed bitmask at any resolution, a built-in city registry, six animation animations, hover/click events.",
+    "description": "A dotted world map as a zero-dependency web component: flat SVG map or rotating canvas globe, land dots at any resolution, a built-in city registry, six animations, drag-to-spin, hover/click events.",
     "codeRepository": "https://github.com/rameerez/mappo",
     "programmingLanguage": "JavaScript",
     "license": "https://opensource.org/licenses/MIT",
@@ -92,9 +92,9 @@
     <h1><code>&lt;world-map&gt;</code></h1>
     <p class="sub">
       The dotted world map every hero section wants — <strong>one zero-dependency
-      ES module, 23&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
+      ES module, 28&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
       script tag, an import map, or npm. Land dots at any resolution, city markers
-      by name, flat map or rotating globe, six animation animations, tilt, hover, clicks.
+      by name, flat map or rotating globe, six animations, tilt, hover, clicks.
     </p>
     <div class="links">
       <a class="gh-star" href="https://github.com/rameerez/mappo" aria-label="Star mappo on GitHub">
@@ -189,10 +189,13 @@
   <h2>Use it in 10 seconds</h2>
   <pre><code>&lt;script type="module" src="https://unpkg.com/mappo"&gt;&lt;/script&gt;
 
-&lt;world-map cities="London, Lagos, Singapore" tilt="40" animation="wave"&gt;&lt;/world-map&gt;</code></pre>
+&lt;world-map cities="London, Lagos, Singapore" tilt="40" animation="wave"&gt;&lt;/world-map&gt;
+
+&lt;!-- or the whole planet, spinning and grabbable --&gt;
+&lt;world-map mode="globe"&gt;&lt;/world-map&gt;</code></pre>
   <p>
     That's the entire integration — one ES module, no bundler required,
-    <strong>23&nbsp;KB gzipped</strong> (74&nbsp;KB raw) with the whole world
+    <strong>28&nbsp;KB gzipped</strong> (91&nbsp;KB raw) with the whole world
     included. Attributes are live: change one, the map re-renders. Import maps
     (Rails <code>importmap-rails</code> included) and npm get the same file:
   </p>
@@ -222,8 +225,9 @@
       <h3>Animations that count</h3>
       <p>Six animation modes — a thin rolling <em>wave</em>, two-octave perlin
       <em>noise</em>, radial <em>ripple</em>, sonar <em>sweep</em>, scattered
-      <em>sparkle</em> — all surface displacement that reads as height under tilt.
-      Plain-language knobs: period, height, width.</p>
+      <em>sparkle</em> — surface displacement that reads as height under tilt,
+      on the flat map and the globe alike. Plain-language knobs: period,
+      height, width.</p>
     </div>
     <div>
       <h3>Performance, measured</h3>
@@ -233,14 +237,15 @@
     </div>
     <div>
       <h3>Real elements, your CSS</h3>
-      <p>SVG in light DOM: every dot is hoverable, every marker focusable, everything
-      restylable from your stylesheet. Events bubble as
-      <code>worldmap:cityclick</code> &amp; friends, or pass callbacks to the JS API.</p>
+      <p>The flat map is SVG in light DOM: every dot hoverable, every marker
+      focusable, everything restylable from your stylesheet. Events bubble as
+      <code>worldmap:cityclick</code> &amp; friends in both modes — the globe
+      re-earns them with canvas hit-testing. Or pass callbacks to the JS API.</p>
     </div>
     <div>
       <h3>Zero everything</h3>
       <p>No dependencies, no build step, no network calls, no API keys, no tracking.
-      One 23&nbsp;KB ES module — script tag, import map, or npm.
+      One 28&nbsp;KB ES module — script tag, import map, or npm.
       <code>prefers-reduced-motion</code> respected. MIT.</p>
     </div>
   </div>

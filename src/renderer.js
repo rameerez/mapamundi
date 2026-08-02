@@ -2,7 +2,7 @@
 //
 // Design decisions worth knowing before changing things:
 //
-// - SVG, not canvas: dots stay real elements — CSS hover, focusable markers,
+// - The FLAT map is SVG on purpose: dots stay real elements — CSS hover, focusable markers,
 //   restylable from outside. Sensible up to ~250 cols; beyond that a canvas
 //   renderer (same options object) is the plan.
 //
@@ -247,7 +247,7 @@ export class WorldMap {
 
     const colsWanted = o.cols ?? 120; // auto default for the flat map
     const cols = Math.min(colsWanted, MAX_COLS);
-    if (colsWanted > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${colsWanted}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
+    if (colsWanted > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${colsWanted}) — beyond that SVG interaction degrades (mode="globe" already renders on canvas; a flat canvas renderer is on the roadmap)`);
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));
     this.grid = { cols, rows, latRange: o.latRange };
 
