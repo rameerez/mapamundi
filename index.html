@@ -63,6 +63,13 @@
     .knobs input[type="range"] { padding: 0; height: 1.4rem; accent-color: #2262fe; }
     .knobs input[type="color"] { height: 1.9rem; padding: .12rem; }
     .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #cfd8e3; border-radius: 8px; overflow: hidden; }
+    .seg button span { margin-right: .15rem; }
+    /* Micro syntax highlighting — the snippets are ours, one language, four
+       tokens; a 100KB highlighter would betray the zero-dependency pitch. */
+    .tok-t { color: #2262fe; }
+    .tok-a { color: #6d28d9; }
+    .tok-s { color: #15803d; }
+    .tok-k { color: #b91c1c; font-weight: 600; }
     .seg button { padding: .45rem .5rem; font: inherit; font-size: .8rem; font-family: ui-monospace, monospace; font-weight: 600; background: #fff; border: 0; cursor: pointer; color: #5b6b7b; }
     .seg button + button { border-left: 1px solid #cfd8e3; }
     .seg button.active { background: #2262fe; color: #fff; }
@@ -115,8 +122,8 @@
         <div class="knob-grid">
           <label class="span2">mode
             <div class="seg" id="mode-seg" role="radiogroup" aria-label="mode">
-              <button type="button" data-value="flat" role="radio" aria-checked="false">flat</button>
-              <button type="button" data-value="globe" role="radio" aria-checked="true">globe</button>
+              <button type="button" data-value="flat" role="radio" aria-checked="false"><span aria-hidden="true">🗺️</span> flat</button>
+              <button type="button" data-value="globe" role="radio" aria-checked="true"><span aria-hidden="true">🌐</span> globe</button>
             </div>
           </label>
           <label class="span2">cols <input id="cols" type="range" min="40" max="240" value="170"></label>
@@ -265,6 +272,18 @@
 </main>
 
 <script type="module">
+  // Micro syntax highlighting: strings → tags → attributes → keywords, in
+  // that order so each pass can anchor on the previous one's output.
+  const highlight = (code) => code
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/("[^"]*")/g, '<span class="tok-s">$1</span>')
+    .replace(/(&lt;\/?)([a-zA-Z][\w-]*)/g, '$1<span class="tok-t">$2</span>')
+    .replace(/([\w-]+)=(?=&quot;|<span class="tok-s")/g, '<span class="tok-a">$1</span>=')
+    .replace(/\b(import|from)\b/g, '<span class="tok-k">$1</span>');
+  for (const code of document.querySelectorAll("pre code")) {
+    code.innerHTML = highlight(code.textContent);
+  }
+
   const map = document.getElementById("map");
   const log = document.getElementById("eventlog");
   for (const input of document.querySelectorAll(".knobs input, .knobs select")) {
