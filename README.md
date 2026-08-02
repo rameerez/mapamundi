@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mappo-logo.webp" alt="mappo" width="440">
+</p>
+
 # mappo
 
 **A dotted world map as a zero-dependency web component.** Land dots derived

@@ -10,6 +10,7 @@
   <meta property="og:description" content="The dotted world map every hero section wants — one 28 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rameerez.github.io/mappo/">
+  <meta property="og:image" content="https://rameerez.github.io/mappo/assets/mappo-logo.webp">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -29,8 +30,8 @@
     a { color: #2262fe; }
     main { max-width: 1060px; margin: 0 auto; padding: 0 1.5rem 5rem; }
     header.hero { text-align: center; padding: 4rem 0 1rem; }
-    .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -0.03em; margin: 0 0 .5rem; }
-    .hero h1 code { color: #2262fe; font-family: ui-monospace, monospace; }
+    .hero h1 { margin: 0 0 .75rem; }
+    .hero h1 img { max-width: min(440px, 82vw); height: auto; }
     .hero p.sub { max-width: 640px; margin: 0 auto 1.5rem; font-size: 1.15rem; color: #5b6b7b; }
     .hero .links { display: flex; gap: .75rem; justify-content: center; align-items: center; margin-bottom: 2rem; }
     .hero .links a { display: inline-block; padding: .55rem 1.1rem; border-radius: 10px; font-weight: 600; text-decoration: none; }
@@ -89,7 +90,7 @@
 <body>
 <main>
   <header class="hero">
-    <h1><code>&lt;world-map&gt;</code></h1>
+    <h1 class="hero-logo"><img src="./assets/mappo-logo.webp" alt="mappo — dotted world map web component" width="440" height="68"></h1>
     <p class="sub">
       The dotted world map every hero section wants — <strong>one zero-dependency
       ES module, 28&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
