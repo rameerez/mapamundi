@@ -1,6 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { latLonToXYZ, buildGlobePoints, buildGlobePhases, isLand } from "../dist/mappo.js";
+import { latLonToXYZ, buildGlobePoints, buildGlobePhases, isLand, hoverShade } from "../dist/mappo.js";
+
+test("hoverShade derives contrast-aware shades from the dot color", () => {
+  const darkFromLight = hoverShade("#d3dce6"); // the default light dots
+  const lightFromDark = hoverShade("#223041"); // the off-dark ocean shade
+  const lum = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+  assert.ok(lum(darkFromLight) < lum("#d3dce6"), "light dots hover darker");
+  assert.ok(lum(lightFromDark) > lum("#223041"), "dark dots hover lighter");
+  assert.match(darkFromLight, /^#[0-9a-f]{6}$/);
+  assert.equal(hoverShade("#abc"), hoverShade("#aabbcc"), "short hex expands");
+  assert.ok(hoverShade("rebeccapurple").startsWith("color-mix("), "non-hex falls back to color-mix");
+});
 
 // The globe's math layer is pure and must hold in Node — the canvas half
 // only ever runs in a browser.

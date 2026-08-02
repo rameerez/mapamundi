@@ -17,6 +17,7 @@ import { isLand } from "./mask.js";
 import { cellCenter } from "./projection.js";
 import { resolveCity } from "./cities.js";
 import { noise2 } from "./noise.js";
+import { hoverShade } from "./color.js";
 
 // Unit-sphere position for a lat/lon. At rotation 0, lon 0 faces the
 // viewer (+z out of the screen), +y is north.
@@ -485,7 +486,7 @@ export class GlobeRenderer {
       const y2 = hp.y * cosT - z1 * sinT;
       const z2 = hp.y * sinT + z1 * cosT;
       if (z2 > 0.01) {
-        ctx.fillStyle = o.dotHoverColor;
+        ctx.fillStyle = o.dotHoverColor ?? hoverShade(o.dotColor);
         ctx.globalAlpha = 1;
         const s = base * (0.45 + 0.55 * z2) * o.dotHoverScale;
         this.#drawShape(cx + x1 * R, cy - y2 * R, s, shape);

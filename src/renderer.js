@@ -44,6 +44,7 @@ import { project, cellCenter } from "./projection.js";
 import { resolveCity } from "./cities.js";
 import { noise2 } from "./noise.js";
 import { GlobeRenderer } from "./globe.js";
+import { hoverShade } from "./color.js";
 
 export const DEFAULTS = {
   // Shape of the world: "flat" (SVG plane) or "globe" (rotating canvas
@@ -62,7 +63,7 @@ export const DEFAULTS = {
   dotShape: "circle",         // "circle" | "square" | "triangle" | an SVG path string (24×24 units)
   dotSize: 0.55,              // fraction of a grid cell the dot fills
   dotColor: "#d3dce6",
-  dotHoverColor: "#94a8bd",
+  dotHoverColor: null,        // auto: a contrast-aware shade of dotColor (darker for light dots, lighter for dark)
   dotHoverScale: 2.6,
   // City markers
   cities: [],                 // ["London", { name, lat, lon, color? }, …]
@@ -472,7 +473,7 @@ export class WorldMap {
       }
       ${o.interactive ? `
       .wm-pos:hover > .wm-dot {
-        fill: ${o.dotHoverColor};
+        fill: ${o.dotHoverColor ?? hoverShade(o.dotColor)};
         transform: scale(${o.dotHoverScale});
         transition: none;
         animation: none; /* a running animation transform animation would win otherwise */

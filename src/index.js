@@ -13,6 +13,7 @@ export { CITIES, resolveCity } from "./cities.js";
 export { isLand, MASK_W, MASK_H } from "./mask.js";
 export { project, cellCenter } from "./projection.js";
 export { noise2 } from "./noise.js";
+export { hoverShade } from "./color.js";
 
 import { register } from "./element.js";
 // Auto-register when a DOM exists (browser); harmless no-op under Node.

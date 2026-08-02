@@ -100,6 +100,10 @@ Three knobs fill the empty space, in either mode:
            globe-ring="true"></world-map>
 ```
 
+- `dot-hover-color` defaults to **auto**: a contrast-aware shade of
+  `dot-color` — darker for light dots, lighter for dark ones — so hovers
+  never fall back to somebody else's gray. Set it (or `dot-hover-scale`)
+  to override.
 - `ocean-color` — water cells render as smaller filler dots in their own
   shade (think off-white on light pages, off-dark on dark ones). In flat
   mode this is a single SVG pattern — one node, any resolution, and it
