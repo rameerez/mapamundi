@@ -97,7 +97,7 @@ Three knobs fill the empty space, in either mode:
 
 ```html
 <world-map mode="globe" ocean-color="#e8eef5" background="#f8fafc"
-           globe-ring="false"></world-map>
+           globe-ring="true"></world-map>
 ```
 
 - `ocean-color` — water cells render as smaller filler dots in their own
@@ -106,7 +106,7 @@ Three knobs fill the empty space, in either mode:
   patches as pure style. Default `none`.
 - `background` — a uniform fill behind everything: full-bleed rect in flat
   mode, the planet disc in globe mode. Default `none`.
-- `globe-ring="false"` — drops the globe's hairline halo.
+- `globe-ring="true"` — adds a hairline halo around the globe (off by default).
 
 ## The JS API
 

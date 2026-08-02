@@ -465,7 +465,7 @@ export class GlobeRenderer {
     const tilt = ((this.o.tilt || 0) * Math.PI) / 180;
     const sinR = Math.sin(rot), cosR = Math.cos(rot);
     const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
-    const base = Math.max(0.75, (4 * R) / this.o.cols) * this.o.dotSize * 1.6;
+    const base = Math.max(0.75, (4 * R) / (this.o.cols ?? 170)) * this.o.dotSize * 1.6;
 
     for (const city of this.cityData) {
       const x1 = city.p.x * cosR + city.p.z * sinR;
@@ -493,7 +493,7 @@ export class GlobeRenderer {
 
     const [latMin, latMax] = this.o.latRange;
     if (lat < latMin || lat > latMax) return null;
-    const cols = this.o.cols;
+    const cols = this.o.cols ?? 170; // auto: globes want density — foreshortening thins the limb
     const rows = Math.round((cols / 360) * (latMax - latMin));
     const col = Math.min(cols - 1, Math.max(0, Math.floor(((lon + 180) / 360) * cols)));
     const row = Math.min(rows - 1, Math.max(0, Math.floor(((latMax - lat) / (latMax - latMin)) * rows)));
@@ -513,7 +513,7 @@ export class GlobeRenderer {
   }
 
   _rebuildData() {
-    const cols = this.o.cols;
+    const cols = this.o.cols ?? 170; // auto: globes want density — foreshortening thins the limb
     this.points = buildGlobePoints(cols, this.o.latRange);
     this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
       ? buildGlobePoints(cols, this.o.latRange, true)
@@ -644,7 +644,7 @@ export class GlobeRenderer {
 
     // Dot footprint ≈ visible cell spacing: cols spans 360° of longitude,
     // so the front hemisphere shows cols/2 dots across 2R.
-    const base = Math.max(0.75, (4 * R) / o.cols) * o.dotSize * 1.6;
+    const base = Math.max(0.75, (4 * R) / (o.cols ?? 170)) * o.dotSize * 1.6;
     const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
 
     // Water first — smaller, dimmer, same transform — so land reads on top.
@@ -662,7 +662,7 @@ export class GlobeRenderer {
       cycle: ((this._time || 0) / o.animationPeriod) % 1,
       w: Math.min(0.9, Math.max(0.02, o.animationWidth *
         ({ ripple: 0.8, sweep: 0.5, sparkle: 0.55 }[o.animation] ?? 1))),
-      heightPx: o.animationHeight * (4 * R) / o.cols,
+      heightPx: o.animationHeight * (4 * R) / (o.cols ?? 170),
       phases: this.phases
     } : null;
 
@@ -752,12 +752,12 @@ export const DEFAULTS = {
   // flat-only for now).
   mode: "flat",
   rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
-  globeRing: true,            // the hairline halo around the globe
+  globeRing: false,           // opt-in hairline halo around the globe
   // Backdrop (both modes)
   background: "none",         // uniform fill behind everything (flat rect / globe disc)
   oceanColor: "none",         // water cells as filler dots, e.g. "#e8eef5"; "none" = off
   // Grid
-  cols: 120,                  // dots across the full longitude span (hard max 260)
+  cols: null,                 // auto: 120 flat · 170 globe (hard max 260); set to override
   latRange: [-58, 84],        // cut Antarctica + arctic emptiness
   // Dots
   dotShape: "circle",         // "circle" | "square" | "triangle" | an SVG path string (24×24 units)
@@ -945,8 +945,9 @@ export class WorldMap {
     }
     if (this._globe) { this._globe.destroy(); this._globe = null; }
 
-    const cols = Math.min(o.cols, MAX_COLS);
-    if (o.cols > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${o.cols}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
+    const colsWanted = o.cols ?? 120; // auto default for the flat map
+    const cols = Math.min(colsWanted, MAX_COLS);
+    if (colsWanted > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${colsWanted}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));
     this.grid = { cols, rows, latRange: o.latRange };
 

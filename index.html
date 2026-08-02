@@ -62,6 +62,12 @@
     .knobs input, .knobs select { width: 100%; font: inherit; font-size: .8rem; padding: .3rem .5rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; }
     .knobs input[type="range"] { padding: 0; height: 1.4rem; accent-color: #2262fe; }
     .knobs input[type="color"] { height: 1.9rem; padding: .12rem; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #cfd8e3; border-radius: 8px; overflow: hidden; }
+    .seg button { padding: .45rem .5rem; font: inherit; font-size: .8rem; font-family: ui-monospace, monospace; font-weight: 600; background: #fff; border: 0; cursor: pointer; color: #5b6b7b; }
+    .seg button + button { border-left: 1px solid #cfd8e3; }
+    .seg button.active { background: #2262fe; color: #fff; }
+    .knobs label.off { opacity: .38; }
+    .knobs label.off input, .knobs label.off select { pointer-events: none; }
     table { border-collapse: collapse; width: 100%; font-size: .9rem; }
     td, th { border-bottom: 1px solid #e5e9ef; padding: .45rem .6rem; text-align: left; vertical-align: top; }
     td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
@@ -97,7 +103,7 @@
 
   <div class="stage">
     <div class="stage-view">
-    <world-map id="map"
+    <world-map id="map" mode="globe"
       cities="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"
       tilt="30"></world-map>
     <p id="eventlog">Hover the dots. Click a city.</p>
@@ -107,10 +113,13 @@
       <div class="knob-group">
         <p class="knob-eyebrow">World</p>
         <div class="knob-grid">
-          <label>mode
-            <select id="mode"><option>flat</option><option>globe</option></select>
+          <label class="span2">mode
+            <div class="seg" id="mode-seg" role="radiogroup" aria-label="mode">
+              <button type="button" data-value="flat" role="radio" aria-checked="false">flat</button>
+              <button type="button" data-value="globe" role="radio" aria-checked="true">globe</button>
+            </div>
           </label>
-          <label>cols <input id="cols" type="range" min="40" max="240" value="120"></label>
+          <label class="span2">cols <input id="cols" type="range" min="40" max="240" value="170"></label>
         </div>
       </div>
       <div class="knob-group">
@@ -118,7 +127,7 @@
         <div class="knob-grid">
           <label>tilt <input id="tilt" type="range" min="0" max="60" value="30"></label>
           <label>globe-ring
-            <select id="globe-ring"><option>true</option><option>false</option></select>
+            <select id="globe-ring"><option>false</option><option>true</option></select>
           </label>
           <label>ocean-color
             <select id="ocean-color"><option>none</option><option value="#e8eef5">off-white</option><option value="#223041">off-dark</option></select>
@@ -230,8 +239,8 @@
   <table>
     <tr><th>attribute</th><th>what it does</th></tr>
     <tr><td>cities</td><td>Comma-separated registry names — markers appear where you say. (JS API also takes custom coordinates.)</td></tr>
-    <tr><td>cols</td><td>Resolution: dots across the full longitude span (default 120, max 260).</td></tr>
-    <tr><td>mode / rotate-speed / globe-ring</td><td>flat (default) · globe — a rotating, grabbable canvas sphere (drag to spin, flick for momentum). tilt becomes the axial tilt; speed in degrees per second (0 parks it); globe-ring="false" drops the halo.</td></tr>
+    <tr><td>cols</td><td>Resolution: dots across the full longitude span (auto: 120 flat · 170 globe; max 260).</td></tr>
+    <tr><td>mode / rotate-speed / globe-ring</td><td>flat (default) · globe — a rotating, grabbable canvas sphere (drag to spin, flick for momentum). tilt becomes the axial tilt; speed in degrees per second (0 parks it); globe-ring="true" adds a hairline halo (off by default).</td></tr>
     <tr><td>ocean-color / background</td><td>Water cells as filler dots in their own shade (off-white, off-dark…) · a uniform fill behind everything (flat rect / globe disc). Both default to none.</td></tr>
     <tr><td>dot-shape / dot-color / dot-size</td><td>circle · square · triangle · custom SVG path; any color; size as a fraction of a cell.</td></tr>
     <tr><td>marker-shape / marker-color / marker-pulse</td><td>Marker styling; pulse is a radar ping (expanding fading ring).</td></tr>
@@ -260,11 +269,41 @@
   const log = document.getElementById("eventlog");
   for (const input of document.querySelectorAll(".knobs input, .knobs select")) {
     // Browsers restore form state across reloads without firing input events
-    // — sync every knob into the element once so the select saying "globe"
-    // can never disagree with a map still rendering flat.
+    // — sync every knob into the element once so a restored control can
+    // never disagree with the map.
     if (map.getAttribute(input.id) !== input.value) map.setAttribute(input.id, input.value);
     input.addEventListener("input", () => map.setAttribute(input.id, input.value));
   }
+
+  // Mode is a segmented control (one position, always). Switching modes also
+  // grays out the knobs that don't apply, and — until you touch the cols
+  // slider yourself — tracks the mode's auto resolution (120 flat / 170 globe).
+  const seg = document.getElementById("mode-seg");
+  const colsInput = document.getElementById("cols");
+  let colsTouched = false;
+  colsInput.addEventListener("input", () => { colsTouched = true; });
+  const MODE_ONLY = { "rotate-speed": "globe", "globe-ring": "globe", "marker-pulse": "flat" };
+  const applyMode = (mode) => {
+    for (const b of seg.querySelectorAll("button")) {
+      const on = b.dataset.value === mode;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-checked", String(on));
+    }
+    map.setAttribute("mode", mode);
+    for (const [id, only] of Object.entries(MODE_ONLY)) {
+      const el = document.getElementById(id);
+      el.disabled = only !== mode;
+      el.closest("label").classList.toggle("off", only !== mode);
+    }
+    if (!colsTouched) {
+      colsInput.value = mode === "globe" ? 170 : 120;
+      map.setAttribute("cols", colsInput.value);
+    }
+  };
+  for (const b of seg.querySelectorAll("button")) {
+    b.addEventListener("click", () => applyMode(b.dataset.value));
+  }
+  applyMode("globe");
   map.addEventListener("worldmap:cityclick", (e) =>
     log.textContent = `city click → ${e.detail.name} (${e.detail.lat}, ${e.detail.lon})`);
   map.addEventListener("worldmap:dotclick", (e) =>

@@ -51,12 +51,12 @@ export const DEFAULTS = {
   // flat-only for now).
   mode: "flat",
   rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
-  globeRing: true,            // the hairline halo around the globe
+  globeRing: false,           // opt-in hairline halo around the globe
   // Backdrop (both modes)
   background: "none",         // uniform fill behind everything (flat rect / globe disc)
   oceanColor: "none",         // water cells as filler dots, e.g. "#e8eef5"; "none" = off
   // Grid
-  cols: 120,                  // dots across the full longitude span (hard max 260)
+  cols: null,                 // auto: 120 flat · 170 globe (hard max 260); set to override
   latRange: [-58, 84],        // cut Antarctica + arctic emptiness
   // Dots
   dotShape: "circle",         // "circle" | "square" | "triangle" | an SVG path string (24×24 units)
@@ -244,8 +244,9 @@ export class WorldMap {
     }
     if (this._globe) { this._globe.destroy(); this._globe = null; }
 
-    const cols = Math.min(o.cols, MAX_COLS);
-    if (o.cols > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${o.cols}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
+    const colsWanted = o.cols ?? 120; // auto default for the flat map
+    const cols = Math.min(colsWanted, MAX_COLS);
+    if (colsWanted > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${colsWanted}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));
     this.grid = { cols, rows, latRange: o.latRange };
 
