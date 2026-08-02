@@ -61,7 +61,9 @@
     .knobs label { display: flex; flex-direction: column; gap: .25rem; min-width: 0; font-size: .68rem; font-weight: 600; color: #5b6b7b; font-family: ui-monospace, monospace; }
     .knobs input, .knobs select { width: 100%; font: inherit; font-size: .8rem; padding: .3rem .5rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; }
     .knobs input[type="range"] { padding: 0; height: 1.4rem; accent-color: #2262fe; }
-    .knobs input[type="color"] { height: 1.9rem; padding: .12rem; }
+    .knobs .clr-field { width: 100%; display: flex; }
+    .knobs .clr-field input { padding-left: 2.1rem; font-family: ui-monospace, monospace; }
+    .knobs .clr-field button { width: 1.5rem; border-radius: 6px 0 0 6px; }
     .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #cfd8e3; border-radius: 8px; overflow: hidden; }
     .seg button span { margin-right: .15rem; }
     /* Micro syntax highlighting — the snippets are ours, one language, four
@@ -81,6 +83,7 @@
     footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #e5e9ef; font-size: .85rem; color: #5b6b7b; }
     #eventlog { font: 12px/1.5 ui-monospace, monospace; color: #5b6b7b; min-height: 1.5em; margin-top: .5rem; }
   </style>
+  <link rel="stylesheet" href="./demo/coloris.css">
   <script type="module" src="./dist/mappo.js"></script>
 </head>
 <body>
@@ -151,7 +154,7 @@
             <select id="dot-shape"><option>circle</option><option>square</option><option>triangle</option></select>
           </label>
           <label>dot-size <input id="dot-size" type="range" min="0.2" max="1" step="0.05" value="0.55"></label>
-          <label class="span2">dot-color <input id="dot-color" type="color" value="#d3dce6"></label>
+          <label class="span2">dot-color <input id="dot-color" type="text" data-coloris value="#d3dce6"></label>
         </div>
       </div>
       <div class="knob-group">
@@ -162,7 +165,7 @@
             <select id="marker-shape"><option>circle</option><option>square</option><option>triangle</option></select>
           </label>
           <label>marker-scale <input id="marker-scale" type="range" min="0.6" max="3" step="0.1" value="1.5"></label>
-          <label>marker-color <input id="marker-color" type="color" value="#2262fe"></label>
+          <label class="span2">marker-color <input id="marker-color" type="text" data-coloris value="#2262fe"></label>
           <label>marker-pulse
             <select id="marker-pulse"><option>false</option><option>true</option></select>
           </label>
@@ -272,6 +275,32 @@
 </main>
 
 <script type="module">
+  // Coloris (vendored, MIT) replaces the native OS color dialog with a
+  // proper in-page picker — swatches from the mappo palette, hex field,
+  // no alpha. It fires real input events on the bound field, so the
+  // generic knob wiring below needs zero special-casing.
+  import Coloris from "./demo/coloris.js";
+  Coloris.init();
+  Coloris({
+    theme: "polaroid",
+    themeMode: "light",
+    format: "hex",
+    alpha: false,
+    wrap: true,
+    swatches: [
+      "#d3dce6", // default dots
+      "#2262fe", // brand blue (default markers)
+      "#212b35", // ink
+      "#e8eef5", // ocean off-white
+      "#223041", // ocean off-dark
+      "#f8fafc", // paper
+      "#0b1220", // midnight
+      "#eac54f", // star yellow
+      "#15803d", // green
+      "#ffffff"
+    ]
+  });
+
   // Micro syntax highlighting: strings → tags → attributes → keywords, in
   // that order so each pass can anchor on the previous one's output.
   const highlight = (code) => code
