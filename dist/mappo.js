@@ -801,9 +801,9 @@ const STYLE_KEYS = new Set([
   "animation", "animationPeriod", "animationHeight", "animationWidth", "cursor", "markerCursor",
   // Backdrop knobs are pure stylesheet in flat mode: the bg rect and the
   // pattern-filled ocean rect always exist; only their fills change.
-  "background", "oceanColor", "globeRing"
+  "background", "globeRing"
 ]);
-const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
+const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale", "oceanColor"]);
 const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
 const CALLBACK_KEYS = new Set(["onDotClick", "onDotEnter", "onCityClick", "onCityEnter"]);
 
@@ -999,10 +999,10 @@ export class WorldMap {
   }
 
   #patchDefs() {
+    // Wholesale swap via the one true builder — a hand-maintained subset
+    // here is how the ocean pattern got silently wiped by dot-shape patches.
     const defs = this.svg?.querySelector("defs");
-    if (defs) defs.innerHTML =
-      this.#shapeMarkup("wm-dot-shape", this.options.dotShape, this.options.dotSize) +
-      this.#shapeMarkup("wm-marker-shape", this.options.markerShape, this.options.dotSize * this.options.markerScale);
+    if (defs) defs.outerHTML = this.#defsMarkup(this.options);
   }
 
   #patchMarkers() {
@@ -1023,9 +1023,26 @@ export class WorldMap {
     return `<defs>${
       this.#shapeMarkup("wm-dot-shape", o.dotShape, o.dotSize)}${
       this.#shapeMarkup("wm-marker-shape", o.markerShape, o.dotSize * o.markerScale)
-    }<pattern id="wm-ocean-pat" width="${CELL}" height="${CELL}" patternUnits="userSpaceOnUse">
-      <use href="#wm-dot-shape" class="wm-ocean-dot" transform="translate(${CELL / 2} ${CELL / 2}) scale(0.62)"/>
-    </pattern></defs>`;
+    }<pattern id="wm-ocean-pat" width="${CELL}" height="${CELL}" patternUnits="userSpaceOnUse">${this.#oceanDotMarkup(o)}</pattern></defs>`;
+  }
+
+  // A DIRECT shape with an inline fill — not <use>: CSS can't reliably
+  // reach into a pattern's use-shadow tree across browsers (the original
+  // implementation rendered nothing in some engines). The cost: oceanColor
+  // is a defs-tier knob instead of style-tier. Still no geometry rebuild.
+  #oceanDotMarkup(o) {
+    if (!o.oceanColor || o.oceanColor === "none") return "";
+    const r = (CELL * o.dotSize * 0.62) / 2;
+    const c = CELL / 2;
+    const fill = `fill="${escapeAttr(o.oceanColor)}"`;
+    switch (o.dotShape) {
+      case "square":
+        return `<rect x="${c - r}" y="${c - r}" width="${r * 2}" height="${r * 2}" rx="${(r * 0.25).toFixed(2)}" ${fill}/>`;
+      case "triangle":
+        return `<path d="M${c} ${c - r} L${c + r} ${c + r} L${c - r} ${c + r} Z" ${fill}/>`;
+      default: // circle + custom-path fallback
+        return `<circle cx="${c}" cy="${c}" r="${r}" ${fill}/>`;
+    }
   }
 
   // Backdrop layers, always present so background/oceanColor patch as pure
@@ -1140,7 +1157,6 @@ export class WorldMap {
     return `
       .wm-bg { fill: ${o.background === "none" ? "none" : o.background}; pointer-events: none; }
       .wm-ocean { display: ${o.oceanColor === "none" ? "none" : "inline"}; pointer-events: none; }
-      .wm-ocean-dot { fill: ${o.oceanColor === "none" ? "transparent" : o.oceanColor}; }
       .wm-tilt { perspective: ${o.perspective}px; }
       .wm-tilt .wm-svg {
         width: 100%; height: auto; display: block;
