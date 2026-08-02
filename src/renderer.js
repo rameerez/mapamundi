@@ -51,6 +51,10 @@ export const DEFAULTS = {
   // flat-only for now).
   mode: "flat",
   rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
+  globeRing: true,            // the hairline halo around the globe
+  // Backdrop (both modes)
+  background: "none",         // uniform fill behind everything (flat rect / globe disc)
+  oceanColor: "none",         // water cells as filler dots, e.g. "#e8eef5"; "none" = off
   // Grid
   cols: 120,                  // dots across the full longitude span (hard max 260)
   latRange: [-58, 84],        // cut Antarctica + arctic emptiness
@@ -93,7 +97,10 @@ export const DEFAULTS = {
 const STYLE_KEYS = new Set([
   "dotColor", "dotHoverColor", "dotHoverScale", "markerColor",
   "markerHoverScale", "tilt", "rotate", "perspective",
-  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor"
+  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor",
+  // Backdrop knobs are pure stylesheet in flat mode: the bg rect and the
+  // pattern-filled ocean rect always exist; only their fills change.
+  "background", "oceanColor", "globeRing"
 ]);
 const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
 const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
@@ -264,7 +271,7 @@ export class WorldMap {
     svg.setAttribute("aria-label", this.#ariaLabel());
     // One parse for the whole scene — the fast path for full builds.
     const [markup, buildMs] = span("wm:build-markup", () =>
-      this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
+      this.#defsMarkup(o) + this.#backdropMarkup(cols, rows) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
     const [, parseMs] = span("wm:parse-innerHTML", () => { svg.innerHTML = markup; });
     this.styleEl.textContent = this.#css(o);
     // Calibration (perf-harness lesson #2): the JS-side cost is only ~25%
@@ -307,10 +314,24 @@ export class WorldMap {
   // -- markup builders ---------------------------------------------------------
 
   #defsMarkup(o) {
+    // The ocean is ONE pattern-filled rect, not thousands of nodes: the
+    // pattern tiles the dot shape (at 0.62×) across every grid cell, and
+    // the stylesheet colors it — so oceanColor stays a style-tier knob
+    // even at max resolution.
     return `<defs>${
       this.#shapeMarkup("wm-dot-shape", o.dotShape, o.dotSize)}${
       this.#shapeMarkup("wm-marker-shape", o.markerShape, o.dotSize * o.markerScale)
-    }</defs>`;
+    }<pattern id="wm-ocean-pat" width="${CELL}" height="${CELL}" patternUnits="userSpaceOnUse">
+      <use href="#wm-dot-shape" class="wm-ocean-dot" transform="translate(${CELL / 2} ${CELL / 2}) scale(0.62)"/>
+    </pattern></defs>`;
+  }
+
+  // Backdrop layers, always present so background/oceanColor patch as pure
+  // style. Both sit under the dots and ignore the pointer.
+  #backdropMarkup(cols, rows) {
+    const w = cols * CELL, h = rows * CELL;
+    return `<rect class="wm-bg" x="0" y="0" width="${w}" height="${h}"/>` +
+           `<rect class="wm-ocean" x="0" y="0" width="${w}" height="${h}" fill="url(#wm-ocean-pat)"/>`;
   }
 
   // One reusable shape per role, centered on the local origin so inner-
@@ -415,6 +436,9 @@ export class WorldMap {
   // The component stylesheet — defaults, not law; outside CSS wins.
   #css(o) {
     return `
+      .wm-bg { fill: ${o.background === "none" ? "none" : o.background}; pointer-events: none; }
+      .wm-ocean { display: ${o.oceanColor === "none" ? "none" : "inline"}; pointer-events: none; }
+      .wm-ocean-dot { fill: ${o.oceanColor === "none" ? "transparent" : o.oceanColor}; }
       .wm-tilt { perspective: ${o.perspective}px; }
       .wm-tilt .wm-svg {
         width: 100%; height: auto; display: block;

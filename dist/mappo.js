@@ -226,14 +226,14 @@ export function latLonToXYZ(lat, lon) {
 // Land dots as a flat Float32Array [x,y,z, x,y,z, …] — same grid sampling
 // as the flat renderer (cellCenter + isLand), so flat and globe agree on
 // what the world looks like at a given resolution.
-export function buildGlobePoints(cols, latRange) {
+export function buildGlobePoints(cols, latRange, water = false) {
   const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
   const grid = { cols, rows, latRange };
   const out = [];
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const c = cellCenter(col, row, grid);
-      if (!isLand(c.lat, c.lon)) continue;
+      if (isLand(c.lat, c.lon) === water) continue;
       const p = latLonToXYZ(c.lat, c.lon);
       out.push(p.x, p.y, p.z);
     }
@@ -319,6 +319,9 @@ export class GlobeRenderer {
   _rebuildData() {
     const cols = this.o.cols;
     this.points = buildGlobePoints(cols, this.o.latRange);
+    this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
+      ? buildGlobePoints(cols, this.o.latRange, true)
+      : null;
     this.cities = (this.o.cities || [])
       .map((c) => (typeof c === "string" ? resolveCity(c) : c))
       .filter(Boolean)
@@ -353,37 +356,10 @@ export class GlobeRenderer {
     });
   }
 
-  _draw() {
-    const { ctx, side } = this;
-    if (!ctx || !side) return;
-    const o = this.o;
-    ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
-    ctx.clearRect(0, 0, side, side);
-
-    const cx = side / 2;
-    const cy = side / 2;
-    const R = side * 0.40; // breathing room — the halo must not kiss the edges
-
-    // The halo: a hairline orbit just outside the sphere.
-    ctx.beginPath();
-    ctx.arc(cx, cy, R * 1.08, 0, Math.PI * 2);
-    ctx.strokeStyle = o.dotColor;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    const rot = (this.angle * Math.PI) / 180;
-    const tilt = ((o.tilt || 0) * Math.PI) / 180;
-    const sinR = Math.sin(rot), cosR = Math.cos(rot);
-    const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
-
-    // Dot footprint ≈ visible cell spacing: cols spans 360° of longitude,
-    // so the front hemisphere shows cols/2 dots across 2R.
-    const base = Math.max(0.75, (4 * R) / o.cols) * o.dotSize * 1.6;
-    const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
-
-    ctx.fillStyle = o.dotColor;
-    const pts = this.points;
+  // One transformed, culled, depth-faded pass over a point buffer — land
+  // and water share it; only color, size and alpha band differ.
+  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi }) {
+    const ctx = this.ctx;
     for (let i = 0; i < pts.length; i += 3) {
       // Spin around the polar axis, then lean by the axial tilt.
       const x1 = pts[i] * cosR + pts[i + 2] * sinR;
@@ -391,11 +367,10 @@ export class GlobeRenderer {
       const y2 = pts[i + 1] * cosT - z1 * sinT;
       const z2 = pts[i + 1] * sinT + z1 * cosT;
       if (z2 <= 0.01) continue; // back hemisphere
-
       const sx = cx + x1 * R;
       const sy = cy - y2 * R;
       const s = base * (0.45 + 0.55 * z2); // foreshortening at the limb
-      ctx.globalAlpha = 0.25 + 0.75 * z2;  // …and a depth fade
+      ctx.globalAlpha = alphaLo + alphaHi * z2; // …and a depth fade
       if (shape === "circle") {
         ctx.beginPath();
         ctx.arc(sx, sy, s / 2, 0, 6.2832);
@@ -410,6 +385,55 @@ export class GlobeRenderer {
         ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
       }
     }
+  }
+
+  _draw() {
+    const { ctx, side } = this;
+    if (!ctx || !side) return;
+    const o = this.o;
+    ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+    ctx.clearRect(0, 0, side, side);
+
+    const cx = side / 2;
+    const cy = side / 2;
+    const R = side * 0.40; // breathing room — the halo must not kiss the edges
+
+    // Solid planet: a uniform disc behind the dots.
+    if (o.background && o.background !== "none") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2);
+      ctx.fillStyle = o.background;
+      ctx.fill();
+    }
+
+    // The halo: a hairline orbit just outside the sphere. Optional.
+    if (o.globeRing !== false) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.08, 0, Math.PI * 2);
+      ctx.strokeStyle = o.dotColor;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    const rot = (this.angle * Math.PI) / 180;
+    const tilt = ((o.tilt || 0) * Math.PI) / 180;
+    const sinR = Math.sin(rot), cosR = Math.cos(rot);
+    const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
+
+    // Dot footprint ≈ visible cell spacing: cols spans 360° of longitude,
+    // so the front hemisphere shows cols/2 dots across 2R.
+    const base = Math.max(0.75, (4 * R) / o.cols) * o.dotSize * 1.6;
+    const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
+
+    // Water first — smaller, dimmer, same transform — so land reads on top.
+    if (this.waterPoints) {
+      ctx.fillStyle = o.oceanColor;
+      this.#drawPoints(this.waterPoints, { cx, cy, R, sinR, cosR, sinT, cosT, base: base * 0.62, shape, alphaLo: 0.15, alphaHi: 0.55 });
+    }
+
+    ctx.fillStyle = o.dotColor;
+    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75 });
 
     // City markers ride the same transform, drawn on top at full strength.
     ctx.fillStyle = o.markerColor;
@@ -477,6 +501,10 @@ export const DEFAULTS = {
   // flat-only for now).
   mode: "flat",
   rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
+  globeRing: true,            // the hairline halo around the globe
+  // Backdrop (both modes)
+  background: "none",         // uniform fill behind everything (flat rect / globe disc)
+  oceanColor: "none",         // water cells as filler dots, e.g. "#e8eef5"; "none" = off
   // Grid
   cols: 120,                  // dots across the full longitude span (hard max 260)
   latRange: [-58, 84],        // cut Antarctica + arctic emptiness
@@ -519,7 +547,10 @@ export const DEFAULTS = {
 const STYLE_KEYS = new Set([
   "dotColor", "dotHoverColor", "dotHoverScale", "markerColor",
   "markerHoverScale", "tilt", "rotate", "perspective",
-  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor"
+  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor",
+  // Backdrop knobs are pure stylesheet in flat mode: the bg rect and the
+  // pattern-filled ocean rect always exist; only their fills change.
+  "background", "oceanColor", "globeRing"
 ]);
 const DEF_KEYS = new Set(["dotShape", "dotSize", "markerShape", "markerScale"]);
 const MARKER_KEYS = new Set(["cities", "markerPulse", "interactive"]);
@@ -690,7 +721,7 @@ export class WorldMap {
     svg.setAttribute("aria-label", this.#ariaLabel());
     // One parse for the whole scene — the fast path for full builds.
     const [markup, buildMs] = span("wm:build-markup", () =>
-      this.#defsMarkup(o) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
+      this.#defsMarkup(o) + this.#backdropMarkup(cols, rows) + this.#dotsMarkup(this.grid) + this.#markersMarkup(this.grid, o));
     const [, parseMs] = span("wm:parse-innerHTML", () => { svg.innerHTML = markup; });
     this.styleEl.textContent = this.#css(o);
     // Calibration (perf-harness lesson #2): the JS-side cost is only ~25%
@@ -733,10 +764,24 @@ export class WorldMap {
   // -- markup builders ---------------------------------------------------------
 
   #defsMarkup(o) {
+    // The ocean is ONE pattern-filled rect, not thousands of nodes: the
+    // pattern tiles the dot shape (at 0.62×) across every grid cell, and
+    // the stylesheet colors it — so oceanColor stays a style-tier knob
+    // even at max resolution.
     return `<defs>${
       this.#shapeMarkup("wm-dot-shape", o.dotShape, o.dotSize)}${
       this.#shapeMarkup("wm-marker-shape", o.markerShape, o.dotSize * o.markerScale)
-    }</defs>`;
+    }<pattern id="wm-ocean-pat" width="${CELL}" height="${CELL}" patternUnits="userSpaceOnUse">
+      <use href="#wm-dot-shape" class="wm-ocean-dot" transform="translate(${CELL / 2} ${CELL / 2}) scale(0.62)"/>
+    </pattern></defs>`;
+  }
+
+  // Backdrop layers, always present so background/oceanColor patch as pure
+  // style. Both sit under the dots and ignore the pointer.
+  #backdropMarkup(cols, rows) {
+    const w = cols * CELL, h = rows * CELL;
+    return `<rect class="wm-bg" x="0" y="0" width="${w}" height="${h}"/>` +
+           `<rect class="wm-ocean" x="0" y="0" width="${w}" height="${h}" fill="url(#wm-ocean-pat)"/>`;
   }
 
   // One reusable shape per role, centered on the local origin so inner-
@@ -841,6 +886,9 @@ export class WorldMap {
   // The component stylesheet — defaults, not law; outside CSS wins.
   #css(o) {
     return `
+      .wm-bg { fill: ${o.background === "none" ? "none" : o.background}; pointer-events: none; }
+      .wm-ocean { display: ${o.oceanColor === "none" ? "none" : "inline"}; pointer-events: none; }
+      .wm-ocean-dot { fill: ${o.oceanColor === "none" ? "transparent" : o.oceanColor}; }
       .wm-tilt { perspective: ${o.perspective}px; }
       .wm-tilt .wm-svg {
         width: 100%; height: auto; display: block;
@@ -1099,6 +1147,9 @@ function escapeAttr(value) {
 const ATTR_MAP = {
   // attribute      → [option, parser]
   "mode":             ["mode", String],
+  "globe-ring":       ["globeRing", (v) => v !== "false"],
+  "background":       ["background", String],
+  "ocean-color":      ["oceanColor", String],
   "rotate-speed":     ["rotateSpeed", Number],
   "cols":             ["cols", Number],
   "lat-min":          ["latMin", Number],   // folded into latRange below

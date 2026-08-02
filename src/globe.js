@@ -33,14 +33,14 @@ export function latLonToXYZ(lat, lon) {
 // Land dots as a flat Float32Array [x,y,z, x,y,z, …] — same grid sampling
 // as the flat renderer (cellCenter + isLand), so flat and globe agree on
 // what the world looks like at a given resolution.
-export function buildGlobePoints(cols, latRange) {
+export function buildGlobePoints(cols, latRange, water = false) {
   const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
   const grid = { cols, rows, latRange };
   const out = [];
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const c = cellCenter(col, row, grid);
-      if (!isLand(c.lat, c.lon)) continue;
+      if (isLand(c.lat, c.lon) === water) continue;
       const p = latLonToXYZ(c.lat, c.lon);
       out.push(p.x, p.y, p.z);
     }
@@ -126,6 +126,9 @@ export class GlobeRenderer {
   _rebuildData() {
     const cols = this.o.cols;
     this.points = buildGlobePoints(cols, this.o.latRange);
+    this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
+      ? buildGlobePoints(cols, this.o.latRange, true)
+      : null;
     this.cities = (this.o.cities || [])
       .map((c) => (typeof c === "string" ? resolveCity(c) : c))
       .filter(Boolean)
@@ -160,37 +163,10 @@ export class GlobeRenderer {
     });
   }
 
-  _draw() {
-    const { ctx, side } = this;
-    if (!ctx || !side) return;
-    const o = this.o;
-    ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
-    ctx.clearRect(0, 0, side, side);
-
-    const cx = side / 2;
-    const cy = side / 2;
-    const R = side * 0.40; // breathing room — the halo must not kiss the edges
-
-    // The halo: a hairline orbit just outside the sphere.
-    ctx.beginPath();
-    ctx.arc(cx, cy, R * 1.08, 0, Math.PI * 2);
-    ctx.strokeStyle = o.dotColor;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    const rot = (this.angle * Math.PI) / 180;
-    const tilt = ((o.tilt || 0) * Math.PI) / 180;
-    const sinR = Math.sin(rot), cosR = Math.cos(rot);
-    const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
-
-    // Dot footprint ≈ visible cell spacing: cols spans 360° of longitude,
-    // so the front hemisphere shows cols/2 dots across 2R.
-    const base = Math.max(0.75, (4 * R) / o.cols) * o.dotSize * 1.6;
-    const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
-
-    ctx.fillStyle = o.dotColor;
-    const pts = this.points;
+  // One transformed, culled, depth-faded pass over a point buffer — land
+  // and water share it; only color, size and alpha band differ.
+  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi }) {
+    const ctx = this.ctx;
     for (let i = 0; i < pts.length; i += 3) {
       // Spin around the polar axis, then lean by the axial tilt.
       const x1 = pts[i] * cosR + pts[i + 2] * sinR;
@@ -198,11 +174,10 @@ export class GlobeRenderer {
       const y2 = pts[i + 1] * cosT - z1 * sinT;
       const z2 = pts[i + 1] * sinT + z1 * cosT;
       if (z2 <= 0.01) continue; // back hemisphere
-
       const sx = cx + x1 * R;
       const sy = cy - y2 * R;
       const s = base * (0.45 + 0.55 * z2); // foreshortening at the limb
-      ctx.globalAlpha = 0.25 + 0.75 * z2;  // …and a depth fade
+      ctx.globalAlpha = alphaLo + alphaHi * z2; // …and a depth fade
       if (shape === "circle") {
         ctx.beginPath();
         ctx.arc(sx, sy, s / 2, 0, 6.2832);
@@ -217,6 +192,55 @@ export class GlobeRenderer {
         ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
       }
     }
+  }
+
+  _draw() {
+    const { ctx, side } = this;
+    if (!ctx || !side) return;
+    const o = this.o;
+    ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+    ctx.clearRect(0, 0, side, side);
+
+    const cx = side / 2;
+    const cy = side / 2;
+    const R = side * 0.40; // breathing room — the halo must not kiss the edges
+
+    // Solid planet: a uniform disc behind the dots.
+    if (o.background && o.background !== "none") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2);
+      ctx.fillStyle = o.background;
+      ctx.fill();
+    }
+
+    // The halo: a hairline orbit just outside the sphere. Optional.
+    if (o.globeRing !== false) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.08, 0, Math.PI * 2);
+      ctx.strokeStyle = o.dotColor;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    const rot = (this.angle * Math.PI) / 180;
+    const tilt = ((o.tilt || 0) * Math.PI) / 180;
+    const sinR = Math.sin(rot), cosR = Math.cos(rot);
+    const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
+
+    // Dot footprint ≈ visible cell spacing: cols spans 360° of longitude,
+    // so the front hemisphere shows cols/2 dots across 2R.
+    const base = Math.max(0.75, (4 * R) / o.cols) * o.dotSize * 1.6;
+    const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
+
+    // Water first — smaller, dimmer, same transform — so land reads on top.
+    if (this.waterPoints) {
+      ctx.fillStyle = o.oceanColor;
+      this.#drawPoints(this.waterPoints, { cx, cy, R, sinR, cosR, sinT, cosT, base: base * 0.62, shape, alphaLo: 0.15, alphaHi: 0.55 });
+    }
+
+    ctx.fillStyle = o.dotColor;
+    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75 });
 
     // City markers ride the same transform, drawn on top at full strength.
     ctx.fillStyle = o.markerColor;

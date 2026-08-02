@@ -38,3 +38,13 @@ test("globe density scales with resolution and stays land-only-plausible", () =>
   assert.ok(frac > 0.15 && frac < 0.5, `implausible land fraction ${frac}`);
   assert.ok(isLand(51.5, -0.1), "London sanity anchor");
 });
+
+test("land and water buffers partition the grid exactly", () => {
+  const cols = 100;
+  const latRange = [-58, 84];
+  const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
+  const land = buildGlobePoints(cols, latRange).length / 3;
+  const water = buildGlobePoints(cols, latRange, true).length / 3;
+  assert.equal(land + water, cols * rows, "every cell is exactly one of land|water");
+  assert.ok(water > land, "Earth is mostly ocean");
+});
