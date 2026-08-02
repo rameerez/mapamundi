@@ -153,16 +153,57 @@ animation automatically.
 
 ## Design notes
 
-- **SVG, not canvas**: dots are real elements — CSS hover, focusable
-  markers, restylable from outside. Sensible up to ~250 cols; a canvas
-  renderer for extreme grids is on the roadmap behind the same options.
+### Two renderers, on purpose
+
+The flat map is SVG. The globe is canvas. This is not an accident of
+history or a migration in progress — each renderer matches the physics of
+its mode, and neither should become the other.
+
+**Why the flat map stays SVG:**
+
+1. **SVG-ness is a feature, not an implementation detail.** Dots are real
+   DOM elements: you restyle `.wm-dot` from your own stylesheet, markers
+   are focusable, hover states are plain CSS, everything shows up in
+   devtools, and the output is vector-crisp at any zoom and in print.
+   Every canvas map library forfeits all of that. It's the reason this one
+   is different.
+2. **The performance math favors SVG in flat's actual regime.** A static
+   SVG map costs *zero* per frame after render — and flat maps are static
+   almost all the time; they re-render only when options change, which the
+   differential update tiers make nearly free (style patches never touch
+   geometry). Animations run as CSS keyframes: compositor-eligible,
+   browser-scheduled, `prefers-reduced-motion` handled for free. A canvas
+   flat map would burn main-thread JavaScript every animated frame,
+   forever, to reproduce what the browser already does better.
+3. **SVG only loses above ~7k animated nodes** — which is exactly the
+   regime the density load gate and the cols cap already govern. The
+   escape hatch for extreme grids (cols ≫ 260) is a future opt-in
+   `renderer: "canvas"` behind the same options, built when someone
+   actually needs 500 cols — not a wholesale conversion.
+
+**Why the globe is canvas:**
+
+A rotating globe re-projects every dot every frame. That's thousands of
+per-frame position writes — as DOM attributes, it's the exact failure mode
+the flat renderer's architecture exists to avoid; as canvas fills, it's
+nothing. The globe gives up SVG's styling hooks (and re-earns the
+interactive ones through inverse-projection hit-testing, so events work
+the same in both modes) in exchange for a renderer that can spin at max
+resolution without dropping frames.
+
+Same options, same events, same land data — `mode` just picks the
+renderer whose physics fit.
+
+### The rest
+
 - **Equirectangular on purpose**: this is a *symbolic* map. Linear lat/lon
   matches both the packed mask and everyone's mental world map.
 - **Coastal snapping**: city coordinates snap to the nearest land dot
   (harbors sit in sea cells at coarse resolutions; a marker floating off
   the coast looks broken).
-- **Globe mode** (`projection: "globe"`, rotating) is designed into the API
-  as a renderer swap — coordinates are lat/lon everywhere — and planned.
+- **Globe mode is a renderer swap, not an API fork**: coordinates are
+  lat/lon everywhere, the option surface is shared, and `tilt` means "lean
+  the world" in both modes — CSS rotateX when flat, axial tilt when globe.
 
 ## Performance
 
