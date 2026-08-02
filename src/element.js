@@ -12,6 +12,8 @@ import { WorldMap } from "./renderer.js";
 
 const ATTR_MAP = {
   // attribute      → [option, parser]
+  "mode":             ["mode", String],
+  "rotate-speed":     ["rotateSpeed", Number],
   "cols":             ["cols", Number],
   "lat-min":          ["latMin", Number],   // folded into latRange below
   "lat-max":          ["latMax", Number],

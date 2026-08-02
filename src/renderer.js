@@ -43,8 +43,14 @@ import { isLand } from "./mask.js";
 import { project, cellCenter } from "./projection.js";
 import { resolveCity } from "./cities.js";
 import { noise2 } from "./noise.js";
+import { GlobeRenderer } from "./globe.js";
 
 export const DEFAULTS = {
+  // Shape of the world: "flat" (SVG plane) or "globe" (rotating canvas
+  // sphere — tilt becomes the axial tilt; hover/click and ambient are
+  // flat-only for now).
+  mode: "flat",
+  rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
   // Grid
   cols: 120,                  // dots across the full longitude span (hard max 260)
   latRange: [-58, 84],        // cut Antarctica + arctic emptiness
@@ -150,6 +156,20 @@ export class WorldMap {
       return; // read at dispatch time
     }
 
+    // Globe mode sidesteps the SVG patch tiers entirely: the canvas redraws
+    // every frame anyway, so any change is a cheap buffer/style refresh —
+    // except a mode switch, which swaps renderers via the geometry path.
+    if (changed.includes("mode")) {
+      dbg("update: mode →", this.options.mode, "→ renderer swap");
+      this.#scheduleRebuild();
+      return;
+    }
+    if (this.options.mode === "globe") {
+      if (this._globe) { this._globe.update(); dbg("update:", changed, "→ globe refresh"); }
+      else this.#scheduleRebuild();
+      return;
+    }
+
     const styleOnly = changed.every((k) =>
       STYLE_KEYS.has(k) || DEF_KEYS.has(k) || MARKER_KEYS.has(k) || CALLBACK_KEYS.has(k));
 
@@ -174,6 +194,8 @@ export class WorldMap {
 
   destroy() {
     clearTimeout(this._rebuildTimer);
+    this._globe?.destroy();
+    this._globe = null;
     this.container.replaceChildren();
   }
 
@@ -203,6 +225,18 @@ export class WorldMap {
   render() {
     this._lastRebuild = performance.now();
     const o = this.options;
+
+    if (o.mode === "globe") {
+      // Leaving the SVG scene: the canvas replaces the container's children,
+      // so the persistent svg/style handles must not survive to be patched
+      // while detached. Rebuilt from scratch on return to flat.
+      if (this.svg) { this.svg = null; this.styleEl = null; }
+      if (this._globe) this._globe.update();
+      else this._globe = new GlobeRenderer(this.container, this.options);
+      return;
+    }
+    if (this._globe) { this._globe.destroy(); this._globe = null; }
+
     const cols = Math.min(o.cols, MAX_COLS);
     if (o.cols > MAX_COLS) console.warn(`[mappo] cols capped at ${MAX_COLS} (asked for ${o.cols}) — beyond that SVG interaction degrades; a canvas mode is on the roadmap`);
     const rows = Math.round((cols / 360) * (o.latRange[1] - o.latRange[0]));

@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mappo — dotted world map web component · 20 KB ES module, no build step</title>
+  <title>mappo — dotted world map web component · 23 KB ES module, no build step</title>
   <meta name="description" content="A dotted world map as a single ES module — 20 KB gzipped, zero dependencies, no build step. Use it with a plain script tag, an import map, or npm. Any resolution, city markers by name (just type London), six ambient animations, tilt, hover and click events.">
   <link rel="canonical" href="https://rameerez.github.io/mappo/">
-  <meta property="og:title" content="mappo — dotted world map web component · 20 KB ESM, no build step">
-  <meta property="og:description" content="The dotted world map every hero section wants — one 20 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
+  <meta property="og:title" content="mappo — dotted world map web component · 23 KB ESM, no build step">
+  <meta property="og:description" content="The dotted world map every hero section wants — one 23 KB ES module, no build step. Type city names, pick a shape, tilt it, animate it.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rameerez.github.io/mappo/">
   <script type="application/ld+json">
@@ -72,9 +72,9 @@
     <h1><code>&lt;world-map&gt;</code></h1>
     <p class="sub">
       The dotted world map every hero section wants — <strong>one zero-dependency
-      ES module, 20&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
+      ES module, 23&nbsp;KB gzipped</strong>. No build step: drop it in with a plain
       script tag, an import map, or npm. Land dots at any resolution, city markers
-      by name, six ambient animations, tilt, hover, clicks.
+      by name, flat map or rotating globe, six ambient animations, tilt, hover, clicks.
     </p>
     <div class="links">
       <a class="gh-star" href="https://github.com/rameerez/mappo" aria-label="Star mappo on GitHub">
@@ -104,7 +104,7 @@
 &lt;world-map cities="London, Lagos, Singapore" tilt="40" ambient="wave"&gt;&lt;/world-map&gt;</code></pre>
   <p>
     That's the entire integration — one ES module, no bundler required,
-    <strong>19.5&nbsp;KB gzipped</strong> (64&nbsp;KB raw) with the whole world
+    <strong>23&nbsp;KB gzipped</strong> (74&nbsp;KB raw) with the whole world
     included. Attributes are live: change one, the map re-renders. Import maps
     (Rails <code>importmap-rails</code> included) and npm get the same file:
   </p>
@@ -119,6 +119,10 @@
 
   <h2>Try every knob</h2>
   <div class="knobs">
+    <label>mode
+      <select id="mode"><option>flat</option><option>globe</option></select>
+    </label>
+    <label>rotate-speed <input id="rotate-speed" type="range" min="0" max="30" step="0.5" value="4"></label>
     <label>cities <input id="cities" value="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></label>
     <label>cols <input id="cols" type="range" min="40" max="240" value="120"></label>
     <label>dot-shape
@@ -173,7 +177,7 @@
     <div>
       <h3>Zero everything</h3>
       <p>No dependencies, no build step, no network calls, no API keys, no tracking.
-      One 20&nbsp;KB ES module — script tag, import map, or npm.
+      One 23&nbsp;KB ES module — script tag, import map, or npm.
       <code>prefers-reduced-motion</code> respected. MIT.</p>
     </div>
   </div>
@@ -183,6 +187,7 @@
     <tr><th>attribute</th><th>what it does</th></tr>
     <tr><td>cities</td><td>Comma-separated registry names — markers appear where you say. (JS API also takes custom coordinates.)</td></tr>
     <tr><td>cols</td><td>Resolution: dots across the full longitude span (default 120, max 260).</td></tr>
+    <tr><td>mode / rotate-speed</td><td>flat (default) · globe — a rotating canvas sphere. tilt becomes the axial tilt; speed in degrees per second (0 parks it).</td></tr>
     <tr><td>dot-shape / dot-color / dot-size</td><td>circle · square · triangle · custom SVG path; any color; size as a fraction of a cell.</td></tr>
     <tr><td>marker-shape / marker-color / marker-pulse</td><td>Marker styling; pulse is a radar ping (expanding fading ring).</td></tr>
     <tr><td>tilt / rotate / perspective</td><td>The lying-down hero look — degrees of rotateX/rotateZ, perspective in px.</td></tr>

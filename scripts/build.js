@@ -15,7 +15,7 @@ const src = (f) => readFileSync(join(here, "..", "src", f), "utf8");
 
 // Dependency order, leaves first. index.js is not concatenated — its only
 // job (re-exports + auto-register) is reproduced in the footer.
-const MODULES = ["mask.js", "projection.js", "noise.js", "cities.js", "renderer.js", "element.js"];
+const MODULES = ["mask.js", "projection.js", "noise.js", "cities.js", "globe.js", "renderer.js", "element.js"];
 
 const body = MODULES.map((file) => {
   const code = src(file)

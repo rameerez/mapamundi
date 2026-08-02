@@ -66,6 +66,26 @@ map.addEventListener("worldmap:cityclick", (e) => {
 // also: worldmap:cityenter, :dotclick, :dotenter
 ```
 
+## Globe mode
+
+The same world, wrapped on a sphere and spinning:
+
+```html
+<world-map mode="globe" cols="170" tilt="18" rotate-speed="4"
+           dot-shape="square" cities="Madrid, Nairobi, Tokyo"></world-map>
+```
+
+Globe mode renders on canvas (a rotating globe re-projects every dot every
+frame — that's not SVG work), so the flat renderer's guarantees change
+shape: dots shrink and fade toward the limb, the back hemisphere is culled,
+a hairline halo rings the sphere, and `tilt` becomes the *axial* tilt.
+`rotate-speed` is degrees per second; `0` parks it. The loop pauses when
+the globe scrolls offscreen, and `prefers-reduced-motion` gets a single
+static frame instead of a spin.
+
+Flat-only for now: hover/click events, marker pulse, and the six ambient
+modes. Custom SVG path dot shapes fall back to squares on canvas.
+
 ## The JS API
 
 ```js
