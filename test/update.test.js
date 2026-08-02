@@ -38,10 +38,10 @@ test("style-tier options never trigger a geometry rebuild", () => {
     map.svg = null; // def/marker patches no-op safely without a DOM
 
     map.update({ dotColor: "#111" });
-    map.update({ ambient: "noise" });
-    map.update({ ambientPeriod: 9 });
-    map.update({ ambientHeight: 1.2 });
-    map.update({ ambientWidth: 0.08 });
+    map.update({ animation: "noise" });
+    map.update({ animationPeriod: 9 });
+    map.update({ animationHeight: 1.2 });
+    map.update({ animationWidth: 0.08 });
     map.update({ tilt: 40, perspective: 800 });
     map.update({ markerColor: "#f00" });
     assert.equal(stylePatches, 7);

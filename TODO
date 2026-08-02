@@ -3,7 +3,7 @@
 ## v0.3 arc: beyond the flat SVG
 - [ ] Canvas renderer for extreme grids (cols > 260): same options surface,
       renderer picked by density (or `renderer="canvas"` override). Kills the
-      ambient-at-max-cols warning for good.
+      animation-at-max-cols warning for good.
 - [x] Globe mode (v0.3.0): canvas renderer, orthographic + hemisphere
       culling, limb foreshortening/fade, halo ring, axial tilt via `tilt`,
       `rotate-speed`, offscreen pause, reduced-motion static frame.
@@ -11,11 +11,11 @@
 
 ## Event surface (the premise asked for "webhooks on animations")
 - [ ] Leave events: onDotLeave / onCityLeave (+ worldmap:dotleave etc.).
-- [ ] Ambient lifecycle hooks: onAmbientCycle (once per period) — cheap via
+- [ ] Animation lifecycle hooks: onAnimationCycle (once per period) — cheap via
       one animationiteration listener on a sentinel dot.
 
 ## Ideas parked (from the build sessions)
-- [ ] Ripple-from-city: ambient="ripple" epicenter at a named city instead of
+- [ ] Ripple-from-city: animation="ripple" epicenter at a named city instead of
       map center.
 - [ ] Region masks: continent/country-only maps ("europe", "americas") — the
       bitmask already supports arbitrary lat/lon windows via latRange + a

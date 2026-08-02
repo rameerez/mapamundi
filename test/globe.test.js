@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { latLonToXYZ, buildGlobePoints, isLand } from "../dist/mappo.js";
+import { latLonToXYZ, buildGlobePoints, buildGlobePhases, isLand } from "../dist/mappo.js";
 
 // The globe's math layer is pure and must hold in Node — the canvas half
 // only ever runs in a browser.
@@ -47,4 +47,16 @@ test("land and water buffers partition the grid exactly", () => {
   const water = buildGlobePoints(cols, latRange, true).length / 3;
   assert.equal(land + water, cols * rows, "every cell is exactly one of land|water");
   assert.ok(water > land, "Earth is mostly ocean");
+});
+
+test("animation phases align one-to-one with globe points", () => {
+  for (const mode of ["wave", "noise", "ripple", "sweep", "sparkle"]) {
+    const pts = buildGlobePoints(90, [-58, 84]).length / 3;
+    const ph = buildGlobePhases(90, [-58, 84], mode);
+    assert.equal(ph.length / 2, pts, `${mode}: phase pairs must match point count`);
+    for (let i = 0; i < ph.length; i += 2) {
+      assert.ok(ph[i] >= 0 && ph[i] <= 1.01, `${mode}: phase in [0,1]`);
+      assert.ok(ph[i + 1] >= 0.55 && ph[i + 1] <= 1, `${mode}: amp in [0.55,1]`);
+    }
+  }
 });

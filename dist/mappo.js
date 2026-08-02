@@ -57,7 +57,7 @@ export function cellCenter(col, row, { cols, rows, latRange }) {
 
 // ══════════ src/noise.js ══════════
 // Compact 2D value noise — smooth, deterministic, zero-dependency. Used to
-// shape ambient animation DELAY fields (ambient: "noise"): neighboring dots
+// shape animation animation DELAY fields (animation: "noise"): neighboring dots
 // get neighboring phases, so the matrix shimmers in organic patches instead
 // of mechanical sweeps. Not full simplex noise — for picking per-dot delays
 // once at render time, smooth value noise is indistinguishable and a third
@@ -241,6 +241,32 @@ export function buildGlobePoints(cols, latRange, water = false) {
   return new Float32Array(out);
 }
 
+// Per-point animation phase + amplitude, aligned index-for-index with
+// buildGlobePoints (same loop, same skip rule). Phase picks WHEN a dot
+// moves in the cycle, amp how far — the exact fields the flat renderer
+// bakes into its dot markup, so the six modes read the same on a sphere.
+export function buildGlobePhases(cols, latRange, mode, water = false) {
+  const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
+  const grid = { cols, rows, latRange };
+  const out = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const c = cellCenter(col, row, grid);
+      if (isLand(c.lat, c.lon) === water) continue;
+      let p;
+      switch (mode) {
+        case "noise":   p = (noise2(col * 0.22, row * 0.22) + 1) / 2; break;
+        case "ripple":  p = Math.hypot(col - cols / 2, row - rows / 2) / Math.hypot(cols / 2, rows / 2); break;
+        case "sweep":   p = col / cols; break;
+        case "sparkle": p = (noise2(col * 3.7 + 9, row * 3.7 + 9) + 1) / 2; break;
+        default:        p = (col + row) / (cols + rows); // wave
+      }
+      out.push(p, 0.55 + 0.45 * ((noise2(col * 0.31 + 47, row * 0.31 + 47) + 1) / 2));
+    }
+  }
+  return new Float32Array(out);
+}
+
 export class GlobeRenderer {
   // @param container [HTMLElement] emptied; a square canvas fills its width.
   // @param options   [Object] the owning WorldMap's options (shared ref).
@@ -322,6 +348,9 @@ export class GlobeRenderer {
     this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
       ? buildGlobePoints(cols, this.o.latRange, true)
       : null;
+    this.phases = this.o.animation && this.o.animation !== "none"
+      ? buildGlobePhases(cols, this.o.latRange, this.o.animation)
+      : null;
     this.cities = (this.o.cities || [])
       .map((c) => (typeof c === "string" ? resolveCity(c) : c))
       .filter(Boolean)
@@ -350,6 +379,7 @@ export class GlobeRenderer {
       if (!this._visible) return; // the IntersectionObserver restarts us
       const dt = this._t == null ? 16 : Math.min(100, t - this._t);
       this._t = t;
+      this._time = (this._time || 0) + dt / 1000;
       this.angle = (this.angle + (this.o.rotateSpeed * dt) / 1000) % 360;
       this._draw();
       this._loop();
@@ -358,7 +388,7 @@ export class GlobeRenderer {
 
   // One transformed, culled, depth-faded pass over a point buffer — land
   // and water share it; only color, size and alpha band differ.
-  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi }) {
+  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi, anim }) {
     const ctx = this.ctx;
     for (let i = 0; i < pts.length; i += 3) {
       // Spin around the polar axis, then lean by the axial tilt.
@@ -367,9 +397,21 @@ export class GlobeRenderer {
       const y2 = pts[i + 1] * cosT - z1 * sinT;
       const z2 = pts[i + 1] * sinT + z1 * cosT;
       if (z2 <= 0.01) continue; // back hemisphere
-      const sx = cx + x1 * R;
-      const sy = cy - y2 * R;
-      const s = base * (0.45 + 0.55 * z2); // foreshortening at the limb
+
+      let lift = 0, sizeMul = 1;
+      if (anim) {
+        const j = (i / 3) * 2;
+        const d = (anim.cycle - anim.phases[j] + 1) % 1;
+        if (d < anim.w) {
+          const bump = Math.sin(Math.PI * (d / anim.w)) * anim.phases[j + 1];
+          if (anim.mode === "sparkle") sizeMul = 1 + 0.45 * bump;
+          else lift = (anim.heightPx * bump) / R;
+        }
+      }
+      const k = 1 + lift;
+      const sx = cx + x1 * R * k;
+      const sy = cy - y2 * R * k;
+      const s = base * (0.45 + 0.55 * z2) * sizeMul; // foreshortening at the limb
       ctx.globalAlpha = alphaLo + alphaHi * z2; // …and a depth fade
       if (shape === "circle") {
         ctx.beginPath();
@@ -427,13 +469,26 @@ export class GlobeRenderer {
     const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
 
     // Water first — smaller, dimmer, same transform — so land reads on top.
+    // Water never animates: the ocean is ground, the land is figure.
     if (this.waterPoints) {
       ctx.fillStyle = o.oceanColor;
       this.#drawPoints(this.waterPoints, { cx, cy, R, sinR, cosR, sinT, cosT, base: base * 0.62, shape, alphaLo: 0.15, alphaHi: 0.55 });
     }
 
+    // The six animation modes on a sphere: the phase/amp fields decide when
+    // and how far each dot lifts RADIALLY off the surface (sparkle scales
+    // size instead) — the canvas twin of the flat renderer's translateY.
+    const anim = !this._static && o.animation && o.animation !== "none" && this.phases ? {
+      mode: o.animation,
+      cycle: ((this._time || 0) / o.animationPeriod) % 1,
+      w: Math.min(0.9, Math.max(0.02, o.animationWidth *
+        ({ ripple: 0.8, sweep: 0.5, sparkle: 0.55 }[o.animation] ?? 1))),
+      heightPx: o.animationHeight * (4 * R) / o.cols,
+      phases: this.phases
+    } : null;
+
     ctx.fillStyle = o.dotColor;
-    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75 });
+    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75, anim });
 
     // City markers ride the same transform, drawn on top at full strength.
     ctx.fillStyle = o.markerColor;
@@ -474,7 +529,7 @@ export class GlobeRenderer {
 //   every infinite animation, and discards ~1MB of DOM for GC — and a
 //   slider drag asks for that 60×/second. So update() classifies changed
 //   keys and does the CHEAPEST sufficient thing:
-//     · style keys  (colors, tilt, cursors, ambient…) → rewrite ONE
+//     · style keys  (colors, tilt, cursors, animation…) → rewrite ONE
 //       persistent <style> element. No DOM touched.
 //     · def keys    (dotShape/dotSize/markerShape/markerScale) → replace
 //       two <defs> children; every <use> updates for free.
@@ -483,8 +538,8 @@ export class GlobeRenderer {
 //       leading+trailing debounced to ≥150ms spacing, with an LRU cache of
 //       dot-markup strings per resolution (dragging back and forth replays
 //       cached geometry instead of recomputing it).
-//   Ambient phases (--wm-pw wave / --wm-pn noise) are baked into every dot
-//   at build time and consumed via calc() in CSS, so ambient mode AND
+//   Animation phases (--wm-pw wave / --wm-pn noise) are baked into every dot
+//   at build time and consumed via calc() in CSS, so animation mode AND
 //   duration are pure style patches too. Negative animation-delays start
 //   each dot mid-cycle — no synchronized flash on load.
 //
@@ -497,7 +552,7 @@ export class GlobeRenderer {
 
 export const DEFAULTS = {
   // Shape of the world: "flat" (SVG plane) or "globe" (rotating canvas
-  // sphere — tilt becomes the axial tilt; hover/click and ambient are
+  // sphere — tilt becomes the axial tilt; hover/click and animation are
   // flat-only for now).
   mode: "flat",
   rotateSpeed: 4,             // globe spin, degrees per second (0 = still)
@@ -525,11 +580,11 @@ export const DEFAULTS = {
   tilt: 0,
   rotate: 0,
   perspective: 1000,
-  // Ambient animation over the whole matrix. Three plain-language knobs:
-  ambient: "none",            // "none" | "wave" | "noise" | "ripple" | "sweep" | "sparkle"
-  ambientPeriod: 6,           // seconds per full cycle (bigger = slower)
-  ambientHeight: 0.8,         // crest height, in CELLS (1 = one grid cell)
-  ambientWidth: 0.13,         // crest window as a fraction of the cycle (smaller = thinner front)
+  // Animation animation over the whole matrix. Three plain-language knobs:
+  animation: "none",            // "none" | "wave" | "noise" | "ripple" | "sweep" | "sparkle"
+  animationPeriod: 6,           // seconds per full cycle (bigger = slower)
+  animationHeight: 0.8,         // crest height, in CELLS (1 = one grid cell)
+  animationWidth: 0.13,         // crest window as a fraction of the cycle (smaller = thinner front)
   // Interaction
   cursor: "default",
   markerCursor: "pointer",
@@ -547,7 +602,7 @@ export const DEFAULTS = {
 const STYLE_KEYS = new Set([
   "dotColor", "dotHoverColor", "dotHoverScale", "markerColor",
   "markerHoverScale", "tilt", "rotate", "perspective",
-  "ambient", "ambientPeriod", "ambientHeight", "ambientWidth", "cursor", "markerCursor",
+  "animation", "animationPeriod", "animationHeight", "animationWidth", "cursor", "markerCursor",
   // Backdrop knobs are pure stylesheet in flat mode: the bg rect and the
   // pattern-filled ocean rect always exist; only their fills change.
   "background", "oceanColor", "globeRing"
@@ -560,7 +615,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const CELL = 10;        // internal SVG units per grid cell — never exposed
 const MAX_COLS = 260;   // above this, SVG node count degrades interaction
 const REBUILD_MS = 150; // min spacing between geometry rebuilds
-// Ambient noise field frequencies. PHASE picks when a dot moves, AMP how
+// Animation noise field frequencies. PHASE picks when a dot moves, AMP how
 // far — two octaves at different scales is what makes the surface read as
 // organic material instead of a screensaver. 0.22 ≈ patches a few dots
 // wide (the 0.09 v1 field produced continent-sized blobs — "too big").
@@ -803,9 +858,9 @@ export class WorldMap {
   }
 
   // Dot geometry depends ONLY on (cols, latRange) — colors, shapes and
-  // ambient all live elsewhere — so the markup string caches perfectly per
-  // resolution. Both ambient phases ship on every dot (~30 bytes each):
-  // that's what makes ambient a style-only knob.
+  // animation all live elsewhere — so the markup string caches perfectly per
+  // resolution. Both animation phases ship on every dot (~30 bytes each):
+  // that's what makes animation a style-only knob.
   #dotsMarkup(grid) {
     const key = `${grid.cols}|${grid.latRange[0]}|${grid.latRange[1]}`;
     const cached = this._dotsCache.get(key);
@@ -820,7 +875,7 @@ export class WorldMap {
         if (!isLand(c.lat, c.lon)) continue;
         dots++;
 
-        // Every ambient mode is a PHASE FIELD baked per dot; the stylesheet
+        // Every animation mode is a PHASE FIELD baked per dot; the stylesheet
         // picks which field feeds the animation delay. All pure functions of
         // (col,row) — that's what keeps this markup resolution-cacheable.
         const pw = ((col + row) / (grid.cols + grid.rows)).toFixed(3);          // diagonal front
@@ -831,7 +886,7 @@ export class WorldMap {
         const pk = (((noise2(col * 3.7 + 9, row * 3.7 + 9) + 1) / 2)).toFixed(3); // uncorrelated twinkle
         // Amplitude octave: 0.55–1.0 so every dot moves, none identically.
         const a = (0.55 + 0.45 * ((noise2(col * NOISE_AMP_SCALE + 47, row * NOISE_AMP_SCALE + 47) + 1) / 2)).toFixed(2);
-        // Density classes for the ambient LOAD GATE: at high resolutions the
+        // Density classes for the animation LOAD GATE: at high resolutions the
         // stylesheet animates only .wm-h (~1/2) or .wm-t (~1/3) of dots —
         // SVG transforms are main-thread, and 8k continuous animators melt
         // frames; a baked checkerboard subset reads identically at density.
@@ -908,7 +963,7 @@ export class WorldMap {
         fill: ${o.dotHoverColor};
         transform: scale(${o.dotHoverScale});
         transition: none;
-        animation: none; /* a running ambient transform animation would win otherwise */
+        animation: none; /* a running animation transform animation would win otherwise */
       }` : ""}
       .wm-marker {
         fill: ${o.markerColor};
@@ -940,7 +995,7 @@ export class WorldMap {
         0%, 100% { transform: scale(1); }
         50%      { transform: scale(1.12); }
       }
-      ${o.ambient !== "none" ? (() => {
+      ${o.animation !== "none" ? (() => {
         // THE LOAD GATE: SVG transforms animate on the main thread, so the
         // number of continuous animators is the frame budget. Above ~4.5k
         // dots animate the baked half-density subset, above ~7k the third —
@@ -949,21 +1004,21 @@ export class WorldMap {
         // real dot count; logged so nobody wonders why some dots sit still.
         const dots = this._dotCount ?? 0;
         const sel = dots > 7000 ? ".wm-t" : dots > 4500 ? ".wm-h" : ".wm-dot";
-        if (sel !== ".wm-dot") dbg(`ambient load gate: ${dots} dots → animating ${sel} subset`);
+        if (sel !== ".wm-dot") dbg(`animation load gate: ${dots} dots → animating ${sel} subset`);
         // Above the top gate, even the third-subset can drop frames on
         // mid-range hardware — SVG animation cost scales with animator
         // count and there is no compositor escape hatch. Say so out loud,
-        // once: ambient is DISRECOMMENDED at extreme resolutions.
-        if (dots > 7000 && !this._ambientWarned) {
-          this._ambientWarned = true;
-          console.warn(`[mappo] ambient="${o.ambient}" with ${dots} dots: expect dropped frames on mid-range hardware. For animated maps keep cols <= 180 (~4.5k dots); reserve high resolutions for static maps. (Canvas renderer for extreme grids is on the roadmap.)`);
+        // once: animation is DISRECOMMENDED at extreme resolutions.
+        if (dots > 7000 && !this._animationWarned) {
+          this._animationWarned = true;
+          console.warn(`[mappo] animation="${o.animation}" with ${dots} dots: expect dropped frames on mid-range hardware. For animated maps keep cols <= 180 (~4.5k dots); reserve high resolutions for static maps. (Canvas renderer for extreme grids is on the roadmap.)`);
         }
-        const dur = o.ambientPeriod;
-        const amp = o.ambientHeight * CELL; // cells → SVG units
-        // Window math: each mode's front is a multiple of ambientWidth.
+        const dur = o.animationPeriod;
+        const amp = o.animationHeight * CELL; // cells → SVG units
+        // Window math: each mode's front is a multiple of animationWidth.
         // rise ≈ 38% into the window (fast up), settle at its end (slow down).
         const win = (mult) => {
-          const w = Math.min(0.9, Math.max(0.02, o.ambientWidth * mult));
+          const w = Math.min(0.9, Math.max(0.02, o.animationWidth * mult));
           return { rise: (w * 38).toFixed(1), settle: (w * 100).toFixed(1) };
         };
         const wWave = win(1), wRipple = win(0.8), wSweep = win(0.5), wSparkle = win(0.55);
@@ -1027,7 +1082,7 @@ export class WorldMap {
         100% { transform: scale(1); }
       }`
         };
-        return modes[o.ambient] ?? "";
+        return modes[o.animation] ?? "";
       })() : ""}
       @media (prefers-reduced-motion: reduce) {
         .wm-dot, .wm-marker, .wm-marker-ring { animation: none !important; transition: none !important; }
@@ -1167,10 +1222,10 @@ const ATTR_MAP = {
   "tilt":             ["tilt", Number],
   "rotate":           ["rotate", Number],
   "perspective":      ["perspective", Number],
-  "ambient":          ["ambient", String],
-  "ambient-period": ["ambientPeriod", Number],
-  "ambient-height": ["ambientHeight", Number],
-  "ambient-width": ["ambientWidth", Number],
+  "animation":          ["animation", String],
+  "animation-period": ["animationPeriod", Number],
+  "animation-height": ["animationHeight", Number],
+  "animation-width": ["animationWidth", Number],
   "cursor":           ["cursor", String],
   "marker-cursor":    ["markerCursor", String],
   "interactive":      ["interactive", (v) => v !== "false"]

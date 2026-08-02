@@ -16,6 +16,7 @@
 import { isLand } from "./mask.js";
 import { cellCenter } from "./projection.js";
 import { resolveCity } from "./cities.js";
+import { noise2 } from "./noise.js";
 
 // Unit-sphere position for a lat/lon. At rotation 0, lon 0 faces the
 // viewer (+z out of the screen), +y is north.
@@ -43,6 +44,32 @@ export function buildGlobePoints(cols, latRange, water = false) {
       if (isLand(c.lat, c.lon) === water) continue;
       const p = latLonToXYZ(c.lat, c.lon);
       out.push(p.x, p.y, p.z);
+    }
+  }
+  return new Float32Array(out);
+}
+
+// Per-point animation phase + amplitude, aligned index-for-index with
+// buildGlobePoints (same loop, same skip rule). Phase picks WHEN a dot
+// moves in the cycle, amp how far — the exact fields the flat renderer
+// bakes into its dot markup, so the six modes read the same on a sphere.
+export function buildGlobePhases(cols, latRange, mode, water = false) {
+  const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
+  const grid = { cols, rows, latRange };
+  const out = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const c = cellCenter(col, row, grid);
+      if (isLand(c.lat, c.lon) === water) continue;
+      let p;
+      switch (mode) {
+        case "noise":   p = (noise2(col * 0.22, row * 0.22) + 1) / 2; break;
+        case "ripple":  p = Math.hypot(col - cols / 2, row - rows / 2) / Math.hypot(cols / 2, rows / 2); break;
+        case "sweep":   p = col / cols; break;
+        case "sparkle": p = (noise2(col * 3.7 + 9, row * 3.7 + 9) + 1) / 2; break;
+        default:        p = (col + row) / (cols + rows); // wave
+      }
+      out.push(p, 0.55 + 0.45 * ((noise2(col * 0.31 + 47, row * 0.31 + 47) + 1) / 2));
     }
   }
   return new Float32Array(out);
@@ -129,6 +156,9 @@ export class GlobeRenderer {
     this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
       ? buildGlobePoints(cols, this.o.latRange, true)
       : null;
+    this.phases = this.o.animation && this.o.animation !== "none"
+      ? buildGlobePhases(cols, this.o.latRange, this.o.animation)
+      : null;
     this.cities = (this.o.cities || [])
       .map((c) => (typeof c === "string" ? resolveCity(c) : c))
       .filter(Boolean)
@@ -157,6 +187,7 @@ export class GlobeRenderer {
       if (!this._visible) return; // the IntersectionObserver restarts us
       const dt = this._t == null ? 16 : Math.min(100, t - this._t);
       this._t = t;
+      this._time = (this._time || 0) + dt / 1000;
       this.angle = (this.angle + (this.o.rotateSpeed * dt) / 1000) % 360;
       this._draw();
       this._loop();
@@ -165,7 +196,7 @@ export class GlobeRenderer {
 
   // One transformed, culled, depth-faded pass over a point buffer — land
   // and water share it; only color, size and alpha band differ.
-  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi }) {
+  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi, anim }) {
     const ctx = this.ctx;
     for (let i = 0; i < pts.length; i += 3) {
       // Spin around the polar axis, then lean by the axial tilt.
@@ -174,9 +205,21 @@ export class GlobeRenderer {
       const y2 = pts[i + 1] * cosT - z1 * sinT;
       const z2 = pts[i + 1] * sinT + z1 * cosT;
       if (z2 <= 0.01) continue; // back hemisphere
-      const sx = cx + x1 * R;
-      const sy = cy - y2 * R;
-      const s = base * (0.45 + 0.55 * z2); // foreshortening at the limb
+
+      let lift = 0, sizeMul = 1;
+      if (anim) {
+        const j = (i / 3) * 2;
+        const d = (anim.cycle - anim.phases[j] + 1) % 1;
+        if (d < anim.w) {
+          const bump = Math.sin(Math.PI * (d / anim.w)) * anim.phases[j + 1];
+          if (anim.mode === "sparkle") sizeMul = 1 + 0.45 * bump;
+          else lift = (anim.heightPx * bump) / R;
+        }
+      }
+      const k = 1 + lift;
+      const sx = cx + x1 * R * k;
+      const sy = cy - y2 * R * k;
+      const s = base * (0.45 + 0.55 * z2) * sizeMul; // foreshortening at the limb
       ctx.globalAlpha = alphaLo + alphaHi * z2; // …and a depth fade
       if (shape === "circle") {
         ctx.beginPath();
@@ -234,13 +277,26 @@ export class GlobeRenderer {
     const shape = o.dotShape === "circle" || o.dotShape === "triangle" ? o.dotShape : "square";
 
     // Water first — smaller, dimmer, same transform — so land reads on top.
+    // Water never animates: the ocean is ground, the land is figure.
     if (this.waterPoints) {
       ctx.fillStyle = o.oceanColor;
       this.#drawPoints(this.waterPoints, { cx, cy, R, sinR, cosR, sinT, cosT, base: base * 0.62, shape, alphaLo: 0.15, alphaHi: 0.55 });
     }
 
+    // The six animation modes on a sphere: the phase/amp fields decide when
+    // and how far each dot lifts RADIALLY off the surface (sparkle scales
+    // size instead) — the canvas twin of the flat renderer's translateY.
+    const anim = !this._static && o.animation && o.animation !== "none" && this.phases ? {
+      mode: o.animation,
+      cycle: ((this._time || 0) / o.animationPeriod) % 1,
+      w: Math.min(0.9, Math.max(0.02, o.animationWidth *
+        ({ ripple: 0.8, sweep: 0.5, sparkle: 0.55 }[o.animation] ?? 1))),
+      heightPx: o.animationHeight * (4 * R) / o.cols,
+      phases: this.phases
+    } : null;
+
     ctx.fillStyle = o.dotColor;
-    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75 });
+    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75, anim });
 
     // City markers ride the same transform, drawn on top at full strength.
     ctx.fillStyle = o.markerColor;

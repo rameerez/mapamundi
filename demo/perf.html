@@ -160,14 +160,14 @@
       row("style patches ×400", "worst main-thread task", `${worst.toFixed(0)}ms`, "< 100ms", worst < 100);
     }
 
-    // Ambient animations run a transform on EVERY dot continuously — SVG
+    // Animation animations run a transform on EVERY dot continuously — SVG
     // transforms are main-thread in Chromium, so this is a real per-frame
     // cost that must stay inside budget at the default resolution.
-    async function ambientFps() {
+    async function animationFps() {
       for (const mode of ["wave", "noise", "ripple", "sweep", "sparkle"]) {
         map.setAttribute("cols", "120");
         map.setAttribute("tilt", "40");
-        map.setAttribute("ambient", mode);
+        map.setAttribute("animation", mode);
         await settle(600);
         takeLongTasks();
         let frames = 0, counting = true;
@@ -176,13 +176,13 @@
         await settle(3000);
         counting = false;
         const fps = frames / 3;
-        dumpDeep(`ambient ${mode}`, takeLongTasks());
-        row(`ambient ${mode} (cols=120, tilt=40)`, "steady-state fps", fps.toFixed(0), "> 40", fps > 40);
+        dumpDeep(`animation ${mode}`, takeLongTasks());
+        row(`animation ${mode} (cols=120, tilt=40)`, "steady-state fps", fps.toFixed(0), "> 40", fps > 40);
       }
       // The reported worst case: max resolution, max intensity, noise.
       map.setAttribute("cols", "260");
-      map.setAttribute("ambient-height", "1.6");
-      map.setAttribute("ambient", "noise");
+      map.setAttribute("animation-height", "1.6");
+      map.setAttribute("animation", "noise");
       await settle(1200);
       takeLongTasks();
       let frames = 0, counting = true;
@@ -190,10 +190,10 @@
       requestAnimationFrame(tick);
       await settle(3000);
       counting = false;
-      dumpDeep("ambient worst case", takeLongTasks());
-      row("ambient noise (cols=260, height=1.6)", "steady-state fps", (frames / 3).toFixed(0), "> 40", frames / 3 > 40);
-      map.setAttribute("ambient", "none");
-      map.setAttribute("ambient-height", "0.8");
+      dumpDeep("animation worst case", takeLongTasks());
+      row("animation noise (cols=260, height=1.6)", "steady-state fps", (frames / 3).toFixed(0), "> 40", frames / 3 > 40);
+      map.setAttribute("animation", "none");
+      map.setAttribute("animation-height", "0.8");
       map.setAttribute("tilt", "0");
       map.setAttribute("cols", "120");
       await settle(1500);
@@ -243,7 +243,7 @@
       await sliderStorm();
       await stylePatchSpeed();
       await hoverStorm();
-      await ambientFps();
+      await animationFps();
       row("suite", "done", new Date().toLocaleTimeString(), "—", true);
       // The copy-pasteable verdict: everything the table shows, in console form.
       const verdict = [...results.querySelectorAll("tr:not(:first-child)")].map((tr) => {

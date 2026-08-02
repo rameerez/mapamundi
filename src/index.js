@@ -5,7 +5,7 @@
 //
 //   // or the programmatic API:
 //   import { WorldMap } from "mappo";
-//   new WorldMap(el, { cities: ["Tokyo"], tilt: 40, ambient: "wave" });
+//   new WorldMap(el, { cities: ["Tokyo"], tilt: 40, animation: "wave" });
 
 export { WorldMap, DEFAULTS, snapToLand } from "./renderer.js";
 export { WorldMapElement, register } from "./element.js";

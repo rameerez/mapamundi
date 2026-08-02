@@ -86,6 +86,6 @@ test("snapToLand: coastal city moves onto land, inland city stays put", () => {
 test("defaults: sane and internally consistent", () => {
   assert.ok(DEFAULTS.cols > 0);
   assert.ok(DEFAULTS.latRange[0] < DEFAULTS.latRange[1]);
-  assert.equal(DEFAULTS.ambient, "none", "ambient animation is opt-in");
+  assert.equal(DEFAULTS.animation, "none", "animation animation is opt-in");
   assert.equal(DEFAULTS.interactive, true);
 });

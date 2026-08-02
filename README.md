@@ -52,7 +52,7 @@ pin "mappo", to: "mappo.js" # vendor dist/mappo.js
   marker-color="#2262fe"
   marker-pulse="true"   <!-- animations are opt-in; default is a calm, static map -->
   tilt="40"
-  ambient="wave"
+  animation="wave"
 ></world-map>
 ```
 
@@ -83,8 +83,10 @@ a hairline halo rings the sphere, and `tilt` becomes the *axial* tilt.
 the globe scrolls offscreen, and `prefers-reduced-motion` gets a single
 static frame instead of a spin.
 
-Flat-only for now: hover/click events, marker pulse, and the six ambient
-modes. Custom SVG path dot shapes fall back to squares on canvas.
+The six animation modes work on the globe too — dots lift radially off
+the surface (sparkle scales instead), driven by the same phase fields as
+the flat renderer. Flat-only for now: hover/click events and marker
+pulse. Custom SVG path dot shapes fall back to squares on canvas.
 
 ## Backdrop
 
@@ -125,7 +127,7 @@ const map = new WorldMap(document.querySelector("#hero-map"), {
   markerPulse: false,
   tilt: 40,                        // the lying-down hero look (rotateX, deg)
   perspective: 1000,
-  ambient: "none",                 // "wave" animates the whole matrix
+  animation: "none",                 // "wave" animates the whole matrix
   cursor: "default",
   markerCursor: "pointer",
   onCityClick: ({ name }) => console.log(name)
@@ -167,9 +169,9 @@ of thumb the numbers produced:
 
 | you want | keep |
 |---|---|
-| an animated hero (`ambient` on) | `cols ≤ 180` (≈4.5k dots) — full smoothness |
+| an animated hero (`animation` on) | `cols ≤ 180` (≈4.5k dots) — full smoothness |
 | an animated map at higher density | the built-in load gate animates a baked subset above 4.5k/7k dots automatically |
-| maximum resolution (`cols` 200–260) | `ambient="none"` — static maps stay cheap at any size |
+| maximum resolution (`cols` 200–260) | `animation="none"` — static maps stay cheap at any size |
 
 Resolution changes are debounced adaptively (spacing self-tunes to your
 machine's measured frame cost), style/color/animation knobs never rebuild

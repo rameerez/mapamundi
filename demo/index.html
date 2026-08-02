@@ -42,11 +42,11 @@
     <label>dot-color <input id="dot-color" type="color" value="#d3dce6"></label>
     <label>marker-color <input id="marker-color" type="color" value="#2262fe"></label>
     <label>tilt <input id="tilt" type="range" min="0" max="60" value="0"></label>
-    <label>ambient-period <input id="ambient-period" type="range" min="2" max="15" step="0.5" value="6"></label>
-    <label>ambient-height <input id="ambient-height" type="range" min="0.2" max="1.6" step="0.1" value="0.8"></label>
-    <label>ambient-width <input id="ambient-width" type="range" min="0.03" max="0.35" step="0.01" value="0.13"></label>
-    <label>ambient
-      <select id="ambient"><option>none</option><option>wave</option><option>noise</option><option>ripple</option><option>sweep</option><option>sparkle</option></select>
+    <label>animation-period <input id="animation-period" type="range" min="2" max="15" step="0.5" value="6"></label>
+    <label>animation-height <input id="animation-height" type="range" min="0.2" max="1.6" step="0.1" value="0.8"></label>
+    <label>animation-width <input id="animation-width" type="range" min="0.03" max="0.35" step="0.01" value="0.13"></label>
+    <label>animation
+      <select id="animation"><option>none</option><option>wave</option><option>noise</option><option>ripple</option><option>sweep</option><option>sparkle</option></select>
     </label>
     <label>marker-pulse
       <select id="marker-pulse"><option>false</option><option>true</option></select>
@@ -69,7 +69,8 @@
     const log = document.getElementById("log");
 
     for (const input of document.querySelectorAll(".knobs input, .knobs select")) {
-      input.addEventListener("input", () => map.setAttribute(input.id, input.value));
+      if (map.getAttribute(input.id) !== input.value) map.setAttribute(input.id, input.value); // sync every knob (restored form state)
+    input.addEventListener("input", () => map.setAttribute(input.id, input.value));
     }
 
     map.addEventListener("worldmap:cityclick", (e) =>
