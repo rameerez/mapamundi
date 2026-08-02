@@ -15,7 +15,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "generate-mask": "node scripts/generate-mask.js",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "keywords": [
     "mappo",

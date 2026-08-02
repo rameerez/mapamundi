@@ -17,4 +17,4 @@ jobs:
       - name: Built artifact must be committed and current
         run: git diff --exit-code dist/
       - name: Test suite (runs against dist/)
-        run: node --test test/
+        run: node --test
