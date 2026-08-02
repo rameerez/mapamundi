@@ -85,7 +85,10 @@ static frame instead of a spin.
 
 The six animation modes work on the globe too — dots lift radially off
 the surface (sparkle scales instead), driven by the same phase fields as
-the flat renderer. Flat-only for now: hover/click events and marker
+the flat renderer. Hover and click events fire with the same payloads as
+flat mode (canvas hit-testing through the inverse projection), and the
+globe is grabbable: drag to spin it, flick for momentum, and the spin
+relaxes back to `rotate-speed` on its own. Flat-only for now: marker
 pulse. Custom SVG path dot shapes fall back to squares on canvas.
 
 ## Backdrop

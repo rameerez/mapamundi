@@ -321,6 +321,7 @@ export class GlobeRenderer {
       this._ro.observe(this.canvas);
     }
 
+    this.#bindPointer();
     this._resize(); // sizes the canvas and draws the first frame
     if (!this._static) this._loop();
   }
@@ -339,7 +340,157 @@ export class GlobeRenderer {
     this._raf = null;
     this._io?.disconnect();
     this._ro?.disconnect();
-    this.canvas.remove();
+    const c = this.canvas;
+    c.removeEventListener("pointerdown", this._onDown);
+    c.removeEventListener("pointermove", this._onMove);
+    c.removeEventListener("pointerup", this._onUp);
+    c.removeEventListener("pointercancel", this._onUp);
+    c.removeEventListener("pointerleave", this._onLeave);
+    c.removeEventListener("click", this._onClick);
+    c.remove();
+  }
+
+  // ── pointer layer: hover/click events + drag-to-spin ─────────────────────
+  // Mirrors the flat renderer's contract exactly: onDotClick/onDotEnter/
+  // onCityClick/onCityEnter callbacks + bubbling worldmap:* CustomEvents,
+  // gated by `interactive`. On top of that, the globe is grabbable: drag
+  // spins it directly, a flick carries momentum, and the spin relaxes back
+  // to rotateSpeed on an exponential (~0.8s) — seamless handoff, no snap.
+
+  #bindPointer() {
+    this._drag = { active: false, moved: 0, lastX: 0, lastT: 0, v: 0 };
+    this._hover = null;
+    const c = this.canvas;
+    this._onDown = (e) => {
+      if (this.o.interactive === false) return;
+      this._drag.active = true;
+      this._drag.moved = 0;
+      this._drag.lastX = e.clientX;
+      this._drag.lastT = e.timeStamp;
+      this._drag.v = 0;
+      c.setPointerCapture?.(e.pointerId);
+      c.style.cursor = "grabbing";
+    };
+    this._onMove = (e) => {
+      if (this.o.interactive === false) return;
+      if (this._drag.active) {
+        const dx = e.clientX - this._drag.lastX;
+        const dt = Math.max(1, e.timeStamp - this._drag.lastT);
+        // Surface-true feel: dragging the equator by R px turns ~57°.
+        const dDeg = (dx * 180) / (Math.PI * this.side * 0.40);
+        this.angle = (this.angle + dDeg + 360) % 360;
+        this._drag.v = 0.75 * this._drag.v + 0.25 * (dDeg / (dt / 1000));
+        this._drag.moved += Math.abs(dx);
+        this._drag.lastX = e.clientX;
+        this._drag.lastT = e.timeStamp;
+        if (this._static) this._draw();
+      } else {
+        this.#hover(e);
+      }
+    };
+    this._onUp = (e) => {
+      if (!this._drag.active) return;
+      this._drag.active = false;
+      c.releasePointerCapture?.(e.pointerId);
+      c.style.cursor = "grab";
+      // The flick: released velocity becomes the spin, clamped sane; the
+      // loop's exponential relaxation walks it back to rotateSpeed.
+      this._omega = Math.max(-360, Math.min(360, this._drag.v));
+      if (this._static) this._omega = this.o.rotateSpeed; // no momentum without motion
+    };
+    this._onLeave = () => this.#clearHover();
+    this._onClick = (e) => {
+      if (this.o.interactive === false) return;
+      if (this._drag.moved > 4) return; // that was a drag, not a click
+      const hit = this.#hitTest(e);
+      if (hit) this.#dispatch(hit.kind, "Click", hit.detail);
+    };
+    c.addEventListener("pointerdown", this._onDown);
+    c.addEventListener("pointermove", this._onMove);
+    c.addEventListener("pointerup", this._onUp);
+    c.addEventListener("pointercancel", this._onUp);
+    c.addEventListener("pointerleave", this._onLeave);
+    c.addEventListener("click", this._onClick);
+  }
+
+  #hover(e) {
+    const hit = this.#hitTest(e);
+    const key = hit ? `${hit.kind}:${hit.detail.name ?? `${hit.detail.col},${hit.detail.row}`}` : null;
+    if (key === this._hoverKey) return;
+    this._hoverKey = key;
+    this._hover = hit;
+    this.canvas.style.cursor = hit
+      ? (hit.kind === "city" ? this.o.markerCursor : this.o.cursor)
+      : "grab";
+    if (hit) this.#dispatch(hit.kind, "Enter", hit.detail);
+    if (this._static) this._draw();
+  }
+
+  #clearHover() {
+    if (!this._hover) return;
+    this._hover = null;
+    this._hoverKey = null;
+    this.canvas.style.cursor = this.o.interactive === false ? "" : "grab";
+    if (this._static) this._draw();
+  }
+
+  // Screen point → sphere surface → lat/lon → grid cell (or city, checked
+  // first in screen space since markers draw on top).
+  #hitTest(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const side = this.side;
+    const cx = side / 2, cy = side / 2, R = side * 0.40;
+    const rot = (this.angle * Math.PI) / 180;
+    const tilt = ((this.o.tilt || 0) * Math.PI) / 180;
+    const sinR = Math.sin(rot), cosR = Math.cos(rot);
+    const sinT = Math.sin(tilt), cosT = Math.cos(tilt);
+    const base = Math.max(0.75, (4 * R) / this.o.cols) * this.o.dotSize * 1.6;
+
+    for (const city of this.cityData) {
+      const x1 = city.p.x * cosR + city.p.z * sinR;
+      const z1 = -city.p.x * sinR + city.p.z * cosR;
+      const y2 = city.p.y * cosT - z1 * sinT;
+      const z2 = city.p.y * sinT + z1 * cosT;
+      if (z2 <= 0.01) continue;
+      if (Math.hypot(mx - (cx + x1 * R), my - (cy - y2 * R)) <= Math.max(10, base * 1.3)) {
+        return { kind: "city", detail: { name: city.name, lat: city.lat, lon: city.lon, element: this.canvas } };
+      }
+    }
+
+    const X = (mx - cx) / R;
+    const Y = -(my - cy) / R;
+    const rr = X * X + Y * Y;
+    if (rr > 1) return null;
+    const Z = Math.sqrt(1 - rr);
+    // Inverse of the draw transform: un-tilt, then un-spin.
+    const y = Y * cosT + Z * sinT;
+    const z1 = -Y * sinT + Z * cosT;
+    const x = X * cosR - z1 * sinR;
+    const z = X * sinR + z1 * cosR;
+    const lat = (Math.asin(y) * 180) / Math.PI;
+    const lon = (Math.atan2(x, z) * 180) / Math.PI;
+
+    const [latMin, latMax] = this.o.latRange;
+    if (lat < latMin || lat > latMax) return null;
+    const cols = this.o.cols;
+    const rows = Math.round((cols / 360) * (latMax - latMin));
+    const col = Math.min(cols - 1, Math.max(0, Math.floor(((lon + 180) / 360) * cols)));
+    const row = Math.min(rows - 1, Math.max(0, Math.floor(((latMax - lat) / (latMax - latMin)) * rows)));
+    const c = cellCenter(col, row, { cols, rows, latRange: this.o.latRange });
+    if (!isLand(c.lat, c.lon)) return null;
+    return { kind: "dot", detail: { lat: c.lat, lon: c.lon, col, row, element: this.canvas } };
+  }
+
+  #dispatch(kind, phase, detail) {
+    if (this.o.interactive === false) return;
+    const cb = this.o[`on${kind === "city" ? "City" : "Dot"}${phase}`];
+    if (cb) cb(detail);
+    this.container.dispatchEvent(new CustomEvent(
+      `worldmap:${kind}${phase.toLowerCase()}`,
+      { detail, bubbles: true }
+    ));
   }
 
   _rebuildData() {
@@ -351,10 +502,11 @@ export class GlobeRenderer {
     this.phases = this.o.animation && this.o.animation !== "none"
       ? buildGlobePhases(cols, this.o.latRange, this.o.animation)
       : null;
-    this.cities = (this.o.cities || [])
+    const resolved = (this.o.cities || [])
       .map((c) => (typeof c === "string" ? resolveCity(c) : c))
-      .filter(Boolean)
-      .map((c) => latLonToXYZ(c.lat, c.lon));
+      .filter(Boolean);
+    this.cityData = resolved.map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, p: latLonToXYZ(c.lat, c.lon) }));
+    this.canvas.style.cursor = this.o.interactive === false ? "" : "grab";
     if (this.o.dotShape !== "circle" && this.o.dotShape !== "square" &&
         this.o.dotShape !== "triangle" && !this._shapeWarned) {
       this._shapeWarned = true;
@@ -380,7 +532,15 @@ export class GlobeRenderer {
       const dt = this._t == null ? 16 : Math.min(100, t - this._t);
       this._t = t;
       this._time = (this._time || 0) + dt / 1000;
-      this.angle = (this.angle + (this.o.rotateSpeed * dt) / 1000) % 360;
+      if (this._drag?.active) {
+        // The pointer owns the angle while dragging.
+      } else {
+        if (this._omega == null) this._omega = this.o.rotateSpeed;
+        // Momentum relaxes back to the base spin — exponential, ~0.8s to
+        // settle, so the handoff from a flick to auto-rotation is seamless.
+        this._omega += (this.o.rotateSpeed - this._omega) * (1 - Math.exp(-dt / 800));
+        this.angle = (this.angle + (this._omega * dt) / 1000 + 360) % 360;
+      }
       this._draw();
       this._loop();
     });
@@ -490,17 +650,36 @@ export class GlobeRenderer {
     ctx.fillStyle = o.dotColor;
     this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75, anim });
 
-    // City markers ride the same transform, drawn on top at full strength.
+    // Hovered dot re-draws bigger in the hover color (cheap overdraw).
+    if (this._hover?.kind === "dot") {
+      const hp = latLonToXYZ(this._hover.detail.lat, this._hover.detail.lon);
+      const x1 = hp.x * cosR + hp.z * sinR;
+      const z1 = -hp.x * sinR + hp.z * cosR;
+      const y2 = hp.y * cosT - z1 * sinT;
+      const z2 = hp.y * sinT + z1 * cosT;
+      if (z2 > 0.01) {
+        ctx.fillStyle = o.dotHoverColor;
+        ctx.globalAlpha = 1;
+        const s = base * (0.45 + 0.55 * z2) * o.dotHoverScale;
+        ctx.beginPath();
+        ctx.arc(cx + x1 * R, cy - y2 * R, s / 2, 0, 6.2832);
+        ctx.fill();
+      }
+    }
+
+    // City markers ride the same transform, drawn on top at full strength;
+    // the hovered one swells by markerHoverScale.
     ctx.fillStyle = o.markerColor;
-    for (const p of this.cities) {
-      const x1 = p.x * cosR + p.z * sinR;
-      const z1 = -p.x * sinR + p.z * cosR;
-      const y2 = p.y * cosT - z1 * sinT;
-      const z2 = p.y * sinT + z1 * cosT;
+    for (const city of this.cityData) {
+      const x1 = city.p.x * cosR + city.p.z * sinR;
+      const z1 = -city.p.x * sinR + city.p.z * cosR;
+      const y2 = city.p.y * cosT - z1 * sinT;
+      const z2 = city.p.y * sinT + z1 * cosT;
       if (z2 <= 0.01) continue;
+      const hovered = this._hover?.kind === "city" && this._hover.detail.name === city.name;
       ctx.globalAlpha = 1;
       ctx.beginPath();
-      ctx.arc(cx + x1 * R, cy - y2 * R, base * 0.85, 0, 6.2832);
+      ctx.arc(cx + x1 * R, cy - y2 * R, base * 0.85 * (hovered ? o.markerHoverScale : 1), 0, 6.2832);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
