@@ -165,6 +165,25 @@ export class GlobeRenderer {
   // spins it directly, a flick carries momentum, and the spin relaxes back
   // to rotateSpeed on an exponential (~0.8s) — seamless handoff, no snap.
 
+  // One marker/highlight footprint, honoring the shape options — the canvas
+  // twin of the flat renderer's <use href="#wm-marker-shape">.
+  #drawShape(sx, sy, size, shape) {
+    const ctx = this.ctx;
+    if (shape === "square") {
+      ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
+    } else if (shape === "triangle") {
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - size / 2);
+      ctx.lineTo(sx + size / 2, sy + size / 2);
+      ctx.lineTo(sx - size / 2, sy + size / 2);
+      ctx.fill();
+    } else { // circle + custom-path fallback
+      ctx.beginPath();
+      ctx.arc(sx, sy, size / 2, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
   #bindPointer() {
     this._drag = { active: false, moved: 0, lastX: 0, lastT: 0, v: 0 };
     this._hover = null;
@@ -262,7 +281,7 @@ export class GlobeRenderer {
       const y2 = city.p.y * cosT - z1 * sinT;
       const z2 = city.p.y * sinT + z1 * cosT;
       if (z2 <= 0.01) continue;
-      if (Math.hypot(mx - (cx + x1 * R), my - (cy - y2 * R)) <= Math.max(10, base * 1.3)) {
+      if (Math.hypot(mx - (cx + x1 * R), my - (cy - y2 * R)) <= Math.max(10, base * this.o.markerScale * 0.9)) {
         return { kind: "city", detail: { name: city.name, lat: city.lat, lon: city.lon, element: this.canvas } };
       }
     }
@@ -469,9 +488,7 @@ export class GlobeRenderer {
         ctx.fillStyle = o.dotHoverColor;
         ctx.globalAlpha = 1;
         const s = base * (0.45 + 0.55 * z2) * o.dotHoverScale;
-        ctx.beginPath();
-        ctx.arc(cx + x1 * R, cy - y2 * R, s / 2, 0, 6.2832);
-        ctx.fill();
+        this.#drawShape(cx + x1 * R, cy - y2 * R, s, shape);
       }
     }
 
@@ -486,9 +503,9 @@ export class GlobeRenderer {
       if (z2 <= 0.01) continue;
       const hovered = this._hover?.kind === "city" && this._hover.detail.name === city.name;
       ctx.globalAlpha = 1;
-      ctx.beginPath();
-      ctx.arc(cx + x1 * R, cy - y2 * R, base * 0.85 * (hovered ? o.markerHoverScale : 1), 0, 6.2832);
-      ctx.fill();
+      const ms = base * o.markerScale * 0.6 * (hovered ? o.markerHoverScale : 1);
+      const mshape = ["circle", "square", "triangle"].includes(o.markerShape) ? o.markerShape : "circle";
+      this.#drawShape(cx + x1 * R, cy - y2 * R, ms * 2, mshape);
     }
     ctx.globalAlpha = 1;
   }

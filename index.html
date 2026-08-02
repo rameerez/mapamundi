@@ -47,22 +47,21 @@
     .gh-star-count { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem .95rem; background: #fff; border: 1px solid #cfd8e3; border-left: 0; border-radius: 0 10px 10px 0; color: #212b35; font-variant-numeric: tabular-nums; box-shadow: 0 1px 0 rgba(33, 43, 53, .05); }
     .gh-star-count[hidden] { display: none; }
     .gh-star-count svg { color: #eac54f; }
-    .stage { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1.75rem; align-items: center; border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.75rem; align-items: center; border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
     .stage-view { min-width: 0; display: flex; flex-direction: column; align-items: center; }
     .stage-view world-map { display: block; width: 100%; max-width: 620px; }
     @media (max-width: 920px) { .stage { grid-template-columns: 1fr; } .knobs { border-left: 0; padding-left: 0; } }
     h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin: 3rem 0 .75rem; }
     pre { background: #f6f8fb; border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem 1.25rem; overflow-x: auto; font: 13.5px/1.6 ui-monospace, monospace; }
-    .knobs { display: flex; flex-direction: column; gap: .7rem; margin: 0; border-left: 1px solid #e5e9ef; padding-left: 1.75rem; max-height: 34rem; overflow-y: auto; scrollbar-width: thin; }
-    .knobs-title { margin: 0 0 .25rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #99a6b5; }
-    .knobs label { display: flex; flex-direction: column; gap: .3rem; font-size: .74rem; font-weight: 600; color: #5b6b7b; font-family: ui-monospace, monospace; }
-    .knobs input, .knobs select { width: 100%; font: inherit; font-size: .85rem; padding: .35rem .55rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; }
-    .knobs input[type="range"] { padding: 0; accent-color: #2262fe; }
-    .knobs input[type="color"] { height: 2rem; padding: .15rem; }
-    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; }
-    .features div { border: 1px solid #e5e9ef; border-radius: 14px; padding: 1.1rem 1.25rem; }
-    .features h3 { margin: 0 0 .35rem; font-size: 1.02rem; }
-    .features p { margin: 0; font-size: .92rem; color: #5b6b7b; }
+    .knobs { display: flex; flex-direction: column; gap: 1.1rem; margin: 0; border-left: 1px solid #e5e9ef; padding-left: 1.75rem; }
+    .knobs-title { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #99a6b5; }
+    .knob-eyebrow { margin: 0 0 .45rem; font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #b8c2ce; }
+    .knob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem .7rem; }
+    .knob-grid .span2 { grid-column: span 2; }
+    .knobs label { display: flex; flex-direction: column; gap: .25rem; min-width: 0; font-size: .68rem; font-weight: 600; color: #5b6b7b; font-family: ui-monospace, monospace; }
+    .knobs input, .knobs select { width: 100%; font: inherit; font-size: .8rem; padding: .3rem .5rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; }
+    .knobs input[type="range"] { padding: 0; height: 1.4rem; accent-color: #2262fe; }
+    .knobs input[type="color"] { height: 1.9rem; padding: .12rem; }
     table { border-collapse: collapse; width: 100%; font-size: .9rem; }
     td, th { border-bottom: 1px solid #e5e9ef; padding: .45rem .6rem; text-align: left; vertical-align: top; }
     td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
@@ -105,36 +104,66 @@
     </div>
     <aside class="knobs" aria-label="Live options">
       <p class="knobs-title">Try every knob</p>
-    <label>mode
-      <select id="mode"><option>flat</option><option>globe</option></select>
-    </label>
-    <label>rotate-speed <input id="rotate-speed" type="range" min="0" max="30" step="0.5" value="4"></label>
-    <label>globe-ring
-      <select id="globe-ring"><option>true</option><option>false</option></select>
-    </label>
-    <label>ocean-color
-      <select id="ocean-color"><option>none</option><option value="#e8eef5">off-white</option><option value="#223041">off-dark</option></select>
-    </label>
-    <label>background
-      <select id="background"><option>none</option><option value="#f8fafc">paper</option><option value="#0b1220">midnight</option></select>
-    </label>
-    <label>cities <input id="cities" value="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></label>
-    <label>cols <input id="cols" type="range" min="40" max="240" value="120"></label>
-    <label>dot-shape
-      <select id="dot-shape"><option>circle</option><option>square</option><option>triangle</option></select>
-    </label>
-    <label>dot-color <input id="dot-color" type="color" value="#d3dce6"></label>
-    <label>marker-color <input id="marker-color" type="color" value="#2262fe"></label>
-    <label>tilt <input id="tilt" type="range" min="0" max="60" value="30"></label>
-    <label>animation
-      <select id="animation"><option>none</option><option>wave</option><option>noise</option><option>ripple</option><option>sweep</option><option>sparkle</option></select>
-    </label>
-    <label>animation-period <input id="animation-period" type="range" min="2" max="15" step="0.5" value="6"></label>
-    <label>animation-height <input id="animation-height" type="range" min="0.2" max="1.6" step="0.1" value="0.8"></label>
-    <label>animation-width <input id="animation-width" type="range" min="0.03" max="0.35" step="0.01" value="0.13"></label>
-    <label>marker-pulse
-      <select id="marker-pulse"><option>false</option><option>true</option></select>
-    </label>
+      <div class="knob-group">
+        <p class="knob-eyebrow">World</p>
+        <div class="knob-grid">
+          <label>mode
+            <select id="mode"><option>flat</option><option>globe</option></select>
+          </label>
+          <label>cols <input id="cols" type="range" min="40" max="240" value="120"></label>
+        </div>
+      </div>
+      <div class="knob-group">
+        <p class="knob-eyebrow">Scene</p>
+        <div class="knob-grid">
+          <label>tilt <input id="tilt" type="range" min="0" max="60" value="30"></label>
+          <label>globe-ring
+            <select id="globe-ring"><option>true</option><option>false</option></select>
+          </label>
+          <label>ocean-color
+            <select id="ocean-color"><option>none</option><option value="#e8eef5">off-white</option><option value="#223041">off-dark</option></select>
+          </label>
+          <label>background
+            <select id="background"><option>none</option><option value="#f8fafc">paper</option><option value="#0b1220">midnight</option></select>
+          </label>
+        </div>
+      </div>
+      <div class="knob-group">
+        <p class="knob-eyebrow">Dots</p>
+        <div class="knob-grid">
+          <label>dot-shape
+            <select id="dot-shape"><option>circle</option><option>square</option><option>triangle</option></select>
+          </label>
+          <label>dot-size <input id="dot-size" type="range" min="0.2" max="1" step="0.05" value="0.55"></label>
+          <label class="span2">dot-color <input id="dot-color" type="color" value="#d3dce6"></label>
+        </div>
+      </div>
+      <div class="knob-group">
+        <p class="knob-eyebrow">Markers</p>
+        <div class="knob-grid">
+          <label class="span2">cities <input id="cities" value="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"></label>
+          <label>marker-shape
+            <select id="marker-shape"><option>circle</option><option>square</option><option>triangle</option></select>
+          </label>
+          <label>marker-scale <input id="marker-scale" type="range" min="0.6" max="3" step="0.1" value="1.5"></label>
+          <label>marker-color <input id="marker-color" type="color" value="#2262fe"></label>
+          <label>marker-pulse
+            <select id="marker-pulse"><option>false</option><option>true</option></select>
+          </label>
+        </div>
+      </div>
+      <div class="knob-group">
+        <p class="knob-eyebrow">Motion</p>
+        <div class="knob-grid">
+          <label>rotate-speed <input id="rotate-speed" type="range" min="0" max="30" step="0.5" value="4"></label>
+          <label>animation
+            <select id="animation"><option>none</option><option>wave</option><option>noise</option><option>ripple</option><option>sweep</option><option>sparkle</option></select>
+          </label>
+          <label>animation-period <input id="animation-period" type="range" min="2" max="15" step="0.5" value="6"></label>
+          <label>animation-height <input id="animation-height" type="range" min="0.2" max="1.6" step="0.1" value="0.8"></label>
+          <label class="span2">animation-width <input id="animation-width" type="range" min="0.03" max="0.35" step="0.01" value="0.13"></label>
+        </div>
+      </div>
     </aside>
   </div>
 
