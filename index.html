@@ -47,13 +47,18 @@
     .gh-star-count { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem .95rem; background: #fff; border: 1px solid #cfd8e3; border-left: 0; border-radius: 0 10px 10px 0; color: #212b35; font-variant-numeric: tabular-nums; box-shadow: 0 1px 0 rgba(33, 43, 53, .05); }
     .gh-star-count[hidden] { display: none; }
     .gh-star-count svg { color: #eac54f; }
-    .stage { border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1.75rem; align-items: center; border: 1px solid #e5e9ef; border-radius: 18px; padding: 1.5rem; overflow: hidden; margin: 0 0 2.5rem; }
+    .stage-view { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+    .stage-view world-map { display: block; width: 100%; max-width: 620px; }
+    @media (max-width: 920px) { .stage { grid-template-columns: 1fr; } .knobs { border-left: 0; padding-left: 0; } }
     h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin: 3rem 0 .75rem; }
     pre { background: #f6f8fb; border: 1px solid #e5e9ef; border-radius: 12px; padding: 1rem 1.25rem; overflow-x: auto; font: 13.5px/1.6 ui-monospace, monospace; }
-    .knobs { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: 1.25rem 0; align-items: end; }
-    .knobs label { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; font-weight: 600; color: #5b6b7b; font-family: ui-monospace, monospace; }
-    .knobs input, .knobs select { font: inherit; padding: .3rem .5rem; border: 1px solid #cfd8e3; border-radius: 8px; min-width: 6.5rem; }
-    .knobs input[type="range"] { min-width: 9rem; padding: 0; }
+    .knobs { display: flex; flex-direction: column; gap: .7rem; margin: 0; border-left: 1px solid #e5e9ef; padding-left: 1.75rem; max-height: 34rem; overflow-y: auto; scrollbar-width: thin; }
+    .knobs-title { margin: 0 0 .25rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #99a6b5; }
+    .knobs label { display: flex; flex-direction: column; gap: .3rem; font-size: .74rem; font-weight: 600; color: #5b6b7b; font-family: ui-monospace, monospace; }
+    .knobs input, .knobs select { width: 100%; font: inherit; font-size: .85rem; padding: .35rem .55rem; border: 1px solid #cfd8e3; border-radius: 8px; background: #fff; }
+    .knobs input[type="range"] { padding: 0; accent-color: #2262fe; }
+    .knobs input[type="color"] { height: 2rem; padding: .15rem; }
     .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; }
     .features div { border: 1px solid #e5e9ef; border-radius: 14px; padding: 1.1rem 1.25rem; }
     .features h3 { margin: 0 0 .35rem; font-size: 1.02rem; }
@@ -92,33 +97,14 @@
   </header>
 
   <div class="stage">
+    <div class="stage-view">
     <world-map id="map"
       cities="London, Lagos, Singapore, New York, Tokyo, Sao Paulo, Nairobi, Sydney"
       tilt="30"></world-map>
     <p id="eventlog">Hover the dots. Click a city.</p>
-  </div>
-
-  <h2>Use it in 10 seconds</h2>
-  <pre><code>&lt;script type="module" src="https://unpkg.com/mappo"&gt;&lt;/script&gt;
-
-&lt;world-map cities="London, Lagos, Singapore" tilt="40" ambient="wave"&gt;&lt;/world-map&gt;</code></pre>
-  <p>
-    That's the entire integration — one ES module, no bundler required,
-    <strong>23&nbsp;KB gzipped</strong> (74&nbsp;KB raw) with the whole world
-    included. Attributes are live: change one, the map re-renders. Import maps
-    (Rails <code>importmap-rails</code> included) and npm get the same file:
-  </p>
-  <pre><code>&lt;script type="importmap"&gt;
-{ "imports": { "mappo": "https://unpkg.com/mappo" } }
-&lt;/script&gt;
-&lt;script type="module"&gt;import "mappo"&lt;/script&gt;</code></pre>
-  <p>
-    Or <code>npm install mappo</code> and <code>import "mappo"</code> from
-    your bundle — though the whole point is that you don't need one.
-  </p>
-
-  <h2>Try every knob</h2>
-  <div class="knobs">
+    </div>
+    <aside class="knobs" aria-label="Live options">
+      <p class="knobs-title">Try every knob</p>
     <label>mode
       <select id="mode"><option>flat</option><option>globe</option></select>
     </label>
@@ -140,7 +126,27 @@
     <label>marker-pulse
       <select id="marker-pulse"><option>false</option><option>true</option></select>
     </label>
+    </aside>
   </div>
+
+  <h2>Use it in 10 seconds</h2>
+  <pre><code>&lt;script type="module" src="https://unpkg.com/mappo"&gt;&lt;/script&gt;
+
+&lt;world-map cities="London, Lagos, Singapore" tilt="40" ambient="wave"&gt;&lt;/world-map&gt;</code></pre>
+  <p>
+    That's the entire integration — one ES module, no bundler required,
+    <strong>23&nbsp;KB gzipped</strong> (74&nbsp;KB raw) with the whole world
+    included. Attributes are live: change one, the map re-renders. Import maps
+    (Rails <code>importmap-rails</code> included) and npm get the same file:
+  </p>
+  <pre><code>&lt;script type="importmap"&gt;
+{ "imports": { "mappo": "https://unpkg.com/mappo" } }
+&lt;/script&gt;
+&lt;script type="module"&gt;import "mappo"&lt;/script&gt;</code></pre>
+  <p>
+    Or <code>npm install mappo</code> and <code>import "mappo"</code> from
+    your bundle — though the whole point is that you don't need one.
+  </p>
 
   <h2>Why this one</h2>
   <div class="features">
