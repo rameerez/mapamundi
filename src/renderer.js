@@ -69,6 +69,8 @@ export const DEFAULTS = {
   cities: [],                 // ["London", { name, lat, lon, color? }, …]
   markers: [],                // coordinate pins: [{ name, lat, lon }, ...] — merged with cities
   focus: null,                // { lat, lon } the globe starts facing (rotate-speed 0 holds it)
+  highlightPolygon: null,     // rings of [lat, lon] — dots inside draw in highlightColor (globe mode)
+  highlightColor: "#8fb0d8",
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot

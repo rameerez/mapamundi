@@ -214,6 +214,41 @@ export function resolveCity(entry) {
   return null;
 }
 
+// ══════════ src/highlight.js ══════════
+// Region highlight: a polygon (rings of [lat, lon] pairs) tested per dot
+// at geometry-build time. The consumer supplies the shape — mappo stays
+// dependency-free (no bundled boundary dataset); VehiclesDB feeds it
+// Natural Earth rings per jurisdiction.
+//
+// Ray-cast in lon/lat space. Rings that cross the antimeridian should be
+// pre-normalized by the caller (shift western lons +360); normalizeRings
+// below does it for rings whose lon span exceeds 180°.
+
+export function normalizeRings(rings) {
+  return rings.map((ring) => {
+    let min = Infinity, max = -Infinity;
+    for (const [, lon] of ring) { if (lon < min) min = lon; if (lon > max) max = lon; }
+    if (max - min <= 180) return { ring, shifted: false };
+    return { ring: ring.map(([la, lo]) => [la, lo < 0 ? lo + 360 : lo]), shifted: true };
+  });
+}
+
+export function pointInRings(lat, lon, normalized) {
+  for (const { ring, shifted } of normalized) {
+    const x = shifted && lon < 0 ? lon + 360 : lon;
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [yi, xi] = ring[i];
+      const [yj, xj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && x < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
 // ══════════ src/globe.js ══════════
 // Globe mode: the same land grid wrapped on a sphere and spun — on canvas,
 // not SVG. A rotating globe re-projects every dot every frame; SVG would
@@ -247,6 +282,24 @@ export function latLonToXYZ(lat, lon) {
 // Land dots as a flat Float32Array [x,y,z, x,y,z, …] — same grid sampling
 // as the flat renderer (cellCenter + isLand), so flat and globe agree on
 // what the world looks like at a given resolution.
+// Per-point highlight flags, aligned index-for-index with
+// buildGlobePoints (same loop, same skip rule) — the phase-array
+// discipline, reused: geometry arrays never reorder, parallel arrays
+// annotate.
+export function buildGlobeFlags(cols, latRange, test, water = false) {
+  const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
+  const grid = { cols, rows, latRange };
+  const out = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const c = cellCenter(col, row, grid);
+      if (isLand(c.lat, c.lon) === water) continue;
+      out.push(test(c.lat, c.lon) ? 1 : 0);
+    }
+  }
+  return new Uint8Array(out);
+}
+
 export function buildGlobePoints(cols, latRange, water = false) {
   const rows = Math.round((cols / 360) * (latRange[1] - latRange[0]));
   const grid = { cols, rows, latRange };
@@ -558,6 +611,14 @@ export class GlobeRenderer {
   _rebuildData() {
     const cols = this.o.cols ?? 170; // auto: globes want density — foreshortening thins the limb
     this.points = buildGlobePoints(cols, this.o.latRange);
+    // Region highlight: flags parallel the land points (never reorder
+    // geometry — annotate it).
+    if (this.o.highlightPolygon?.length) {
+      const normalized = normalizeRings(this.o.highlightPolygon);
+      this.highlightFlags = buildGlobeFlags(cols, this.o.latRange, (lat, lon) => pointInRings(lat, lon, normalized));
+    } else {
+      this.highlightFlags = null;
+    }
     this.waterPoints = this.o.oceanColor && this.o.oceanColor !== "none"
       ? buildGlobePoints(cols, this.o.latRange, true)
       : null;
@@ -610,9 +671,20 @@ export class GlobeRenderer {
 
   // One transformed, culled, depth-faded pass over a point buffer — land
   // and water share it; only color, size and alpha band differ.
-  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi, anim }) {
+  #drawPoints(pts, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo, alphaHi, anim, flags, baseColor, hiColor }) {
     const ctx = this.ctx;
+    let currentHi = null;
     for (let i = 0; i < pts.length; i += 3) {
+      // Region highlight: per-dot colour switch, batched (fillStyle only
+      // changes when the flag flips — dots stream in row order, so runs
+      // are long and the switch is cheap).
+      if (flags) {
+        const hi = flags[i / 3] === 1;
+        if (hi !== currentHi) {
+          ctx.fillStyle = hi ? hiColor : baseColor;
+          currentHi = hi;
+        }
+      }
       // Spin around the polar axis, then lean by the axial tilt.
       const x1 = pts[i] * cosR + pts[i + 2] * sinR;
       const z1 = -pts[i] * sinR + pts[i + 2] * cosR;
@@ -710,7 +782,8 @@ export class GlobeRenderer {
     } : null;
 
     ctx.fillStyle = o.dotColor;
-    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75, anim });
+    this.#drawPoints(this.points, { cx, cy, R, sinR, cosR, sinT, cosT, base, shape, alphaLo: 0.25, alphaHi: 0.75, anim,
+      flags: this.highlightFlags, baseColor: o.dotColor, hiColor: o.highlightColor });
 
     // Hovered dot re-draws bigger in the hover color (cheap overdraw).
     if (this._hover?.kind === "dot") {
@@ -812,6 +885,8 @@ export const DEFAULTS = {
   cities: [],                 // ["London", { name, lat, lon, color? }, …]
   markers: [],                // coordinate pins: [{ name, lat, lon }, ...] — merged with cities
   focus: null,                // { lat, lon } the globe starts facing (rotate-speed 0 holds it)
+  highlightPolygon: null,     // rings of [lat, lon] — dots inside draw in highlightColor (globe mode)
+  highlightColor: "#8fb0d8",
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot
@@ -1493,6 +1568,17 @@ const ATTR_MAP = {
                         const m = v.trim().match(/^(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
                         return m ? { lat: Number(m[1]), lon: Number(m[2]) } : null;
                       }],
+  // Region highlight (globe mode): JSON rings of [lat, lon] pairs —
+  // either one ring or an array of rings. The CONSUMER supplies the
+  // shape (Natural Earth etc.); mappo ships no boundary data.
+  "highlight-polygon": ["highlightPolygon", (v) => {
+                        try {
+                          const parsed = JSON.parse(v);
+                          if (!Array.isArray(parsed) || !parsed.length) return null;
+                          return Array.isArray(parsed[0][0]) ? parsed : [ parsed ];
+                        } catch { return null; }
+                      }],
+  "highlight-color":  ["highlightColor", String],
   "marker-shape":     ["markerShape", String],
   "marker-color":     ["markerColor", String],
   "marker-scale":     ["markerScale", Number],

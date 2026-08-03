@@ -39,6 +39,17 @@ const ATTR_MAP = {
                         const m = v.trim().match(/^(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
                         return m ? { lat: Number(m[1]), lon: Number(m[2]) } : null;
                       }],
+  // Region highlight (globe mode): JSON rings of [lat, lon] pairs —
+  // either one ring or an array of rings. The CONSUMER supplies the
+  // shape (Natural Earth etc.); mappo ships no boundary data.
+  "highlight-polygon": ["highlightPolygon", (v) => {
+                        try {
+                          const parsed = JSON.parse(v);
+                          if (!Array.isArray(parsed) || !parsed.length) return null;
+                          return Array.isArray(parsed[0][0]) ? parsed : [ parsed ];
+                        } catch { return null; }
+                      }],
+  "highlight-color":  ["highlightColor", String],
   "marker-shape":     ["markerShape", String],
   "marker-color":     ["markerColor", String],
   "marker-scale":     ["markerScale", Number],
