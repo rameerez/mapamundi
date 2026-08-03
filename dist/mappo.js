@@ -1,4 +1,4 @@
-// mappo v0.3.0
+// mappo v0.4.0
 // A dotted world map as a zero-dependency web component. MIT license.
 // https://github.com/rameerez/mappo
 // Land data: Natural Earth (public domain, naturalearthdata.com).

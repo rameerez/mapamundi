@@ -95,6 +95,47 @@ globe is grabbable: drag to spin it, flick for momentum, and the spin
 relaxes back to `rotate-speed` on its own. Flat-only for now: marker
 pulse. Custom SVG path dot shapes fall back to squares on canvas.
 
+## Pointing at places (v0.4)
+
+Three attributes turn the globe from a decoration into a *"here"*:
+
+```html
+<world-map mode="globe" rotate-speed="0"
+           focus="48.86,2.35"
+           markers="Paris@48.86,2.35"
+           marker-shape="pin" marker-scale="4" marker-pulse="true"
+           highlight-color="#8fabe0"
+           highlight-polygon='[[[51.1,2.5],[50.1,1.4],[49.4,-1.9],[48.6,-4.6],[47.3,-2.5],[46.2,-1.2],[43.4,-1.8],[42.5,3.0],[43.5,7.0],[46.4,6.8],[49.0,8.1],[51.1,2.5]]]'
+></world-map>
+```
+
+- **`markers="Name@lat,lon;..."`** — coordinate pins, no gazetteer lookup.
+  Semicolon-separated, `Name@` optional. They feed the same pipeline as
+  `cities` (which has always accepted `{ name, lat, lon }` objects from
+  JS — this attribute just gives markup the same power) and fire the same
+  events.
+- **`focus="lat,lon"`** — the globe *starts facing* that point: the
+  initial spin angle brings the focus longitude to the front. With
+  `rotate-speed="0"` it holds there; with a spin it's the opening frame.
+  Pair with `tilt` to bias the latitude toward the viewer.
+- **`marker-shape="pin"`** — the map-pin silhouette (round head, punched
+  hole, anchored at the TIP — the point is the place, the head floats
+  above it). Draws on both renderers; `marker-pulse` pings at the anchor.
+- **`highlight-polygon`** + **`highlight-color`** — every land dot inside
+  the polygon draws in the highlight colour: the whole country or state
+  glows, not just the pin. The value is JSON rings of `[lat, lon]` pairs
+  (one ring or an array of rings — islands welcome). **mappo ships no
+  boundary data** on purpose: you supply the shape (Natural Earth's
+  public-domain admin polygons compact beautifully — a country is
+  typically 1–3&nbsp;KB at the resolution a dot grid can even resolve).
+  Rings crossing the antimeridian are normalized automatically. Globe
+  mode only for now.
+
+The highlight test runs once per geometry build, not per frame: flags
+parallel the point buffer index-for-index (the same discipline as the
+animation phase fields — geometry arrays never reorder, parallel arrays
+annotate them), and the draw loop batches colour switches on flag runs.
+
 ## Backdrop
 
 Three knobs fill the empty space, in either mode:

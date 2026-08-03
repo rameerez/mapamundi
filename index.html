@@ -83,6 +83,7 @@
     td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
     footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #e5e9ef; font-size: .85rem; color: #5b6b7b; }
     #eventlog { font: 12px/1.5 ui-monospace, monospace; color: #5b6b7b; min-height: 1.5em; margin-top: .5rem; }
+      .pill { font-size: .65em; background: #e8effc; color: #2262fe; border-radius: 999px; padding: .15em .6em; vertical-align: middle; font-weight: 600; }
   </style>
   <link rel="shortcut icon" href="./favicon/favicon.ico" type="image/x-icon">
   <link rel="icon" href="./favicon/favicon.ico" type="image/x-icon">
@@ -260,6 +261,39 @@
     </div>
   </div>
 
+  <h2>Pointing at places <span class="pill">new in 0.4</span></h2>
+  <p>
+    A globe that <em>faces a country</em>, drops a real map pin on it, and
+    lights up the whole territory — three attributes, no geo library:
+  </p>
+  <div class="stage" style="margin: 1rem 0 1.5rem;">
+    <div class="stage-view">
+      <world-map mode="globe" rotate-speed="0" cols="240" interactive="false"
+        style="display:block;width:100%;max-width:520px;"
+        focus="46.5,2.35"
+        tilt="26"
+        markers="France@48.86,2.35"
+        marker-shape="pin" marker-scale="4" marker-pulse="true"
+        highlight-color="#8fabe0"
+        highlight-polygon='[[[51.1,2.5],[50.4,1.5],[49.4,-1.1],[48.6,-4.6],[47.3,-2.5],[46.2,-1.2],[43.4,-1.8],[42.5,3.0],[43.5,7.0],[44.3,7.5],[46.4,6.8],[47.6,7.6],[49.0,8.1],[49.5,6.3],[50.4,4.9],[51.1,2.5]]]'
+      ></world-map>
+    </div>
+  </div>
+  <pre><code>&lt;world-map mode="globe" rotate-speed="0"
+  focus="46.5,2.35"                 &lt;!-- start facing this point; 0 speed holds it --&gt;
+  markers="France@48.86,2.35"       &lt;!-- coordinate pins, no gazetteer --&gt;
+  marker-shape="pin"                &lt;!-- the map-pin silhouette, anchored at its tip --&gt;
+  highlight-color="#8fabe0"
+  highlight-polygon='[[[51.1,2.5],[50.4,1.5], …]]'  &lt;!-- your rings; every dot inside glows --&gt;
+&gt;&lt;/world-map&gt;</code></pre>
+  <p>
+    <code>highlight-polygon</code> takes JSON rings of <code>[lat, lon]</code>
+    pairs — mappo ships no boundary data on purpose; feed it
+    <a href="https://www.naturalearthdata.com">Natural Earth</a> shapes (a
+    country compacts to 1–3&nbsp;KB at dot-grid resolution). The point-in-polygon
+    test runs once per geometry build, never per frame.
+  </p>
+
   <h2>The attributes</h2>
   <table>
     <tr><th>attribute</th><th>what it does</th></tr>
@@ -268,7 +302,10 @@
     <tr><td>mode / rotate-speed / globe-ring</td><td>flat (default) · globe — a rotating, grabbable canvas sphere (drag to spin, flick for momentum). tilt becomes the axial tilt; speed in degrees per second (0 parks it); globe-ring="true" adds a hairline halo (off by default).</td></tr>
     <tr><td>ocean-color / background</td><td>Water cells as filler dots in their own shade (off-white, off-dark…) · a uniform fill behind everything (flat rect / globe disc). Both default to none.</td></tr>
     <tr><td>dot-shape / dot-color / dot-size</td><td>circle · square · triangle · custom SVG path; any color; size as a fraction of a cell. Hover color auto-derives as a shade of dot-color (override: dot-hover-color / dot-hover-scale).</td></tr>
-    <tr><td>marker-shape / marker-color / marker-pulse</td><td>Marker styling; pulse is a radar ping (expanding fading ring).</td></tr>
+    <tr><td>marker-shape / marker-color / marker-pulse</td><td>circle · square · triangle · <strong>pin</strong> (map-pin silhouette, anchored at its tip); any color; pulse is a radar ping (expanding fading ring).</td></tr>
+    <tr><td>markers</td><td>Coordinate pins without the registry: <code>"Name@lat,lon;…"</code> — same pipeline and events as cities.</td></tr>
+    <tr><td>focus</td><td><code>"lat,lon"</code> the globe starts facing — with rotate-speed 0 it holds there; pair with tilt for latitude.</td></tr>
+    <tr><td>highlight-polygon / highlight-color</td><td>JSON rings of [lat, lon] — every land dot inside draws in the highlight colour (the whole country glows). You supply the shape; globe mode.</td></tr>
     <tr><td>tilt / rotate / perspective</td><td>The lying-down hero look — degrees of rotateX/rotateZ, perspective in px.</td></tr>
     <tr><td>animation</td><td>none · wave · noise · ripple · sweep · sparkle.</td></tr>
     <tr><td>animation-period / -height / -width</td><td>Seconds per cycle · crest height in cells · crest thinness as a fraction of the cycle.</td></tr>
