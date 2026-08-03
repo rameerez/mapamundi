@@ -67,6 +67,8 @@ export const DEFAULTS = {
   dotHoverScale: 2.6,
   // City markers
   cities: [],                 // ["London", { name, lat, lon, color? }, …]
+  markers: [],                // coordinate pins: [{ name, lat, lon }, ...] — merged with cities
+  focus: null,                // { lat, lon } the globe starts facing (rotate-speed 0 holds it)
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot
@@ -430,7 +432,7 @@ export class WorldMap {
 
   #markersMarkup(grid, o) {
     const parts = [`<g class="wm-markers">`];
-    for (const entry of o.cities) {
+    for (const entry of [ ...o.cities, ...(o.markers || []) ]) {
       const city = resolveCity(entry);
       if (!city) {
         console.warn(`[mappo] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);

@@ -82,7 +82,10 @@ export class GlobeRenderer {
   constructor(container, options) {
     this.container = container;
     this.o = options;
-    this.angle = 0;
+    // focus: start the spin facing a point — the rotation that brings
+    // the focus longitude to the front (z-max at rot = -λ, since
+    // latLonToXYZ puts λ=0 facing the viewer at angle 0).
+    this.angle = options.focus ? ((-options.focus.lon % 360) + 360) % 360 : 0;
     this._raf = null;
     this._t = null;
 
@@ -330,8 +333,8 @@ export class GlobeRenderer {
     this.phases = this.o.animation && this.o.animation !== "none"
       ? buildGlobePhases(cols, this.o.latRange, this.o.animation)
       : null;
-    const resolved = (this.o.cities || [])
-      .map((c) => (typeof c === "string" ? resolveCity(c) : c))
+    const resolved = [ ...(this.o.cities || []), ...(this.o.markers || []) ]
+      .map((c) => (typeof c === "string" ? resolveCity(c) : resolveCity(c)))
       .filter(Boolean);
     this.cityData = resolved.map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, p: latLonToXYZ(c.lat, c.lon) }));
     this.canvas.style.cursor = this.o.interactive === false ? "" : "grab";

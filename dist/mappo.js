@@ -294,7 +294,10 @@ export class GlobeRenderer {
   constructor(container, options) {
     this.container = container;
     this.o = options;
-    this.angle = 0;
+    // focus: start the spin facing a point — the rotation that brings
+    // the focus longitude to the front (z-max at rot = -λ, since
+    // latLonToXYZ puts λ=0 facing the viewer at angle 0).
+    this.angle = options.focus ? ((-options.focus.lon % 360) + 360) % 360 : 0;
     this._raf = null;
     this._t = null;
 
@@ -542,8 +545,8 @@ export class GlobeRenderer {
     this.phases = this.o.animation && this.o.animation !== "none"
       ? buildGlobePhases(cols, this.o.latRange, this.o.animation)
       : null;
-    const resolved = (this.o.cities || [])
-      .map((c) => (typeof c === "string" ? resolveCity(c) : c))
+    const resolved = [ ...(this.o.cities || []), ...(this.o.markers || []) ]
+      .map((c) => (typeof c === "string" ? resolveCity(c) : resolveCity(c)))
       .filter(Boolean);
     this.cityData = resolved.map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, p: latLonToXYZ(c.lat, c.lon) }));
     this.canvas.style.cursor = this.o.interactive === false ? "" : "grab";
@@ -788,6 +791,8 @@ export const DEFAULTS = {
   dotHoverScale: 2.6,
   // City markers
   cities: [],                 // ["London", { name, lat, lon, color? }, …]
+  markers: [],                // coordinate pins: [{ name, lat, lon }, ...] — merged with cities
+  focus: null,                // { lat, lon } the globe starts facing (rotate-speed 0 holds it)
   markerShape: "circle",
   markerColor: "#2262fe",
   markerScale: 1.5,           // relative to a dot
@@ -1151,7 +1156,7 @@ export class WorldMap {
 
   #markersMarkup(grid, o) {
     const parts = [`<g class="wm-markers">`];
-    for (const entry of o.cities) {
+    for (const entry of [ ...o.cities, ...(o.markers || []) ]) {
       const city = resolveCity(entry);
       if (!city) {
         console.warn(`[mappo] unknown city: ${JSON.stringify(entry)} — not in the registry; pass { name, lat, lon } instead`);
@@ -1449,6 +1454,19 @@ const ATTR_MAP = {
   "dot-hover-color":  ["dotHoverColor", String],
   "dot-hover-scale":  ["dotHoverScale", Number],
   "cities":           ["cities", (v) => v.split(",").map((s) => s.trim()).filter(Boolean)],
+  // Coordinate markers, no gazetteer: "48.2,16.4;Vienna@48.2,16.4" —
+  // semicolon-separated, optional Name@ prefix. Feeds the same pipeline
+  // as cities (resolveCity already passes {lat, lon, name} through).
+  "markers":          ["markers", (v) => v.split(";").map((tok) => {
+                        const m = tok.trim().match(/^(?:(.*)@)?(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
+                        return m ? { name: m[1] || "", lat: Number(m[2]), lon: Number(m[3]) } : null;
+                      }).filter(Boolean)],
+  // "lat,lon" the globe starts FACING (and the flat map centers its
+  // marker composition around visually) — rotate-speed 0 holds it there.
+  "focus":            ["focus", (v) => {
+                        const m = v.trim().match(/^(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
+                        return m ? { lat: Number(m[1]), lon: Number(m[2]) } : null;
+                      }],
   "marker-shape":     ["markerShape", String],
   "marker-color":     ["markerColor", String],
   "marker-scale":     ["markerScale", Number],

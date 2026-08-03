@@ -26,6 +26,19 @@ const ATTR_MAP = {
   "dot-hover-color":  ["dotHoverColor", String],
   "dot-hover-scale":  ["dotHoverScale", Number],
   "cities":           ["cities", (v) => v.split(",").map((s) => s.trim()).filter(Boolean)],
+  // Coordinate markers, no gazetteer: "48.2,16.4;Vienna@48.2,16.4" —
+  // semicolon-separated, optional Name@ prefix. Feeds the same pipeline
+  // as cities (resolveCity already passes {lat, lon, name} through).
+  "markers":          ["markers", (v) => v.split(";").map((tok) => {
+                        const m = tok.trim().match(/^(?:(.*)@)?(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
+                        return m ? { name: m[1] || "", lat: Number(m[2]), lon: Number(m[3]) } : null;
+                      }).filter(Boolean)],
+  // "lat,lon" the globe starts FACING (and the flat map centers its
+  // marker composition around visually) — rotate-speed 0 holds it there.
+  "focus":            ["focus", (v) => {
+                        const m = v.trim().match(/^(-?[\d.]+)\s*,\s*(-?[\d.]+)$/);
+                        return m ? { lat: Number(m[1]), lon: Number(m[2]) } : null;
+                      }],
   "marker-shape":     ["markerShape", String],
   "marker-color":     ["markerColor", String],
   "marker-scale":     ["markerScale", Number],
