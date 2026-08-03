@@ -367,6 +367,13 @@ export class WorldMap {
         return `<path id="${id}" d="M0 ${-r} L${r} ${r} L${-r} ${r} Z"/>`;
       case "circle":
         return `<circle id="${id}" r="${r}"/>`;
+      case "pin": {
+        // Map-pin silhouette anchored at the TIP (origin = the place),
+        // head floating above, punched hole — the canvas globe's twin.
+        const pr = r * 1.24;
+        const hy = (-pr * 1.9).toFixed(2);
+        return `<path id="${id}" fill-rule="evenodd" d="M0 0 Q${(pr * 0.55).toFixed(2)} ${(Number(hy) + pr * 1.1).toFixed(2)} ${(pr * 0.966).toFixed(2)} ${(Number(hy) + pr * 0.259).toFixed(2)} A${pr.toFixed(2)} ${pr.toFixed(2)} 0 1 0 ${(-pr * 0.966).toFixed(2)} ${(Number(hy) + pr * 0.259).toFixed(2)} Q${(-pr * 0.55).toFixed(2)} ${(Number(hy) + pr * 1.1).toFixed(2)} 0 0 Z M0 ${hy} m${(-pr * 0.42).toFixed(2)} 0 a${(pr * 0.42).toFixed(2)} ${(pr * 0.42).toFixed(2)} 0 1 0 ${(pr * 0.84).toFixed(2)} 0 a${(pr * 0.42).toFixed(2)} ${(pr * 0.42).toFixed(2)} 0 1 0 ${(-pr * 0.84).toFixed(2)} 0"/>`;
+      }
       default:
         // Custom SVG path, 24×24 box centered on origin (icon convention).
         return `<path id="${id}" d="${escapeAttr(shape)}" transform="scale(${((r * 2) / 24).toFixed(4)})"/>`;

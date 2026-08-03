@@ -181,6 +181,25 @@ export class GlobeRenderer {
       ctx.lineTo(sx + size / 2, sy + size / 2);
       ctx.lineTo(sx - size / 2, sy + size / 2);
       ctx.fill();
+    } else if (shape === "pin") {
+      // The map-pin (Google-marker silhouette): round head, tapered
+      // tail, ANCHORED AT THE TIP — (sx, sy) is the place, the head
+      // floats above it. A punched hole keeps it reading as a pin at
+      // small sizes.
+      const r = size * 0.62;
+      const hy = sy - r * 1.9;      // head center
+      ctx.beginPath();
+      ctx.arc(sx, hy, r, Math.PI * 0.85, Math.PI * 0.15);
+      ctx.quadraticCurveTo(sx + r * 0.55, hy + r * 1.1, sx, sy);
+      ctx.quadraticCurveTo(sx - r * 0.55, hy + r * 1.1, sx - r * Math.cos(Math.PI * 0.15), hy + r * Math.sin(Math.PI * 0.15));
+      ctx.closePath();
+      ctx.fill();
+      const punch = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(sx, hy, r * 0.42, 0, 6.2832);
+      ctx.fill();
+      ctx.globalCompositeOperation = punch;
     } else { // circle + custom-path fallback
       ctx.beginPath();
       ctx.arc(sx, sy, size / 2, 0, 6.2832);
@@ -508,7 +527,7 @@ export class GlobeRenderer {
       const hovered = this._hover?.kind === "city" && this._hover.detail.name === city.name;
       ctx.globalAlpha = 1;
       const ms = base * o.markerScale * 0.6 * (hovered ? o.markerHoverScale : 1);
-      const mshape = ["circle", "square", "triangle"].includes(o.markerShape) ? o.markerShape : "circle";
+      const mshape = ["circle", "square", "triangle", "pin"].includes(o.markerShape) ? o.markerShape : "circle";
       this.#drawShape(cx + x1 * R, cy - y2 * R, ms * 2, mshape);
     }
     ctx.globalAlpha = 1;
